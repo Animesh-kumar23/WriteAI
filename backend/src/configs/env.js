@@ -10,8 +10,10 @@ const ENV = {
   AI_DAILY_LIMIT: parseInt(process.env.AI_DAILY_LIMIT ?? "100", 10),
   ATLAS_SEARCH_ENABLED: process.env.ATLAS_SEARCH_ENABLED === "true",
 };
-if (!ENV.JWT_SECRET_KEY) {
-  throw new Error("JWT_SECRET_KEY missing!");
+const REQUIRED = ["DB_URI", "JWT_SECRET_KEY", "GEMINI_API_KEY"];
+const missing = REQUIRED.filter((k) => !ENV[k]);
+if (missing.length > 0) {
+  throw new Error(`Missing required env vars: ${missing.join(", ")}`);
 }
 
 module.exports = ENV;

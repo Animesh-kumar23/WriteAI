@@ -59,6 +59,7 @@ function EditDocumentPage() {
     initialContent,
     handleDocumentEdit,
     resetDocument,
+    reloadChunks,
     setIsStreaming,
     flushSave,
     keepMyVersion,
@@ -81,16 +82,20 @@ function EditDocumentPage() {
   const isStreamingRef = useRef(false);
   const abortControllerRef = useRef(null);
   const editorRef = useRef(null);
+  const saveLockRef = useRef(false);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchDocument = async () => {
       try {
         const { data } = await axiosInstance.get(
-          `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}`
+          `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}`,
+          { signal: controller.signal }
         );
 
         setDocument(data.document);
       } catch (error) {
+        if (error?.name === "CanceledError" || error?.code === "ERR_CANCELED") return;
         console.error("Error fetching document:", error);
 
         toast.error("Failed to load document!", {
@@ -99,11 +104,12 @@ function EditDocumentPage() {
 
         navigate("/dashboard");
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     };
 
     fetchDocument();
+    return () => controller.abort();
   }, [documentId, navigate]);
 
   const handleEditDocument = (event) => {
@@ -117,6 +123,11 @@ function EditDocumentPage() {
   };
 
   const handleSaveChanges = async (documentToSave = document, showToast = true) => {
+    // Synchronous double-submit guard — setIsSaving is async, so two rapid clicks
+    // both pass an `if (isSaving)` check before the first one updates state.
+    if (saveLockRef.current) return;
+    saveLockRef.current = true;
+
     setIsSaving(true);
     setSaveStatus("saving");
 
@@ -142,6 +153,7 @@ function EditDocumentPage() {
       });
     } finally {
       setIsSaving(false);
+      saveLockRef.current = false;
     }
   };
 
@@ -508,8 +520,9 @@ function EditDocumentPage() {
               onDocumentEdit={handleEditorEdit}
               documentId={documentId}
               onImportComplete={() => {
-                // Reload the full document after import replaces all chunks
-                window.location.reload();
+                // Re-fetch chunks in place instead of hard-reloading the page.
+                reloadChunks();
+                setSaveStatus("saved");
               }}
             />
           ) : (

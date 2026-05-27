@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
@@ -17,33 +17,41 @@ export default function useDocumentEditor(
   const isStreamingRef = useRef(false);
   const saveEpochRef = useRef(0);
 
-  useEffect(() => {
-    const loadAllChunks = async () => {
-      try {
-        const { data } = await axiosInstance.get(
-          `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks`,
-          { params: { all: true } }
-        );
+  const loadAllChunks = useCallback(async (signal) => {
+    try {
+      const { data } = await axiosInstance.get(
+        `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks`,
+        { params: { all: true }, signal }
+      );
 
-        const fetchedChunks = data.chunks || [];
+      const fetchedChunks = data.chunks || [];
 
-        modelRef.current = new DocumentModel(fetchedChunks);
+      modelRef.current = new DocumentModel(fetchedChunks);
 
-        setChunks(modelRef.current.getChunks());
-        setInitialContent(modelRef.current.getFullText());
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to load document");
+      setChunks(modelRef.current.getChunks());
+      setInitialContent(modelRef.current.getFullText());
+    } catch (error) {
+      if (axiosInstance.isCancel?.(error) || error?.name === "CanceledError" || error?.code === "ERR_CANCELED") {
+        return;
       }
-    };
+      console.error(error);
+      toast.error("Failed to load document");
+    }
+  }, [documentId]);
 
+  useEffect(() => {
     if (!documentId) return;
 
     clearTimeout(globalSaveTimerRef.current);
     globalSaveTimerRef.current = null;
 
-    loadAllChunks();
-  }, [documentId]);
+    const controller = new AbortController();
+    loadAllChunks(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [documentId, loadAllChunks]);
 
   const saveDirtyChunks = async () => {
     const capturedEpoch = saveEpochRef.current;
@@ -171,11 +179,14 @@ export default function useDocumentEditor(
     resetDocument(joined);
   };
 
+  const reloadChunks = useCallback(() => loadAllChunks(), [loadAllChunks]);
+
   return {
     chunks,
     initialContent,
     handleDocumentEdit,
     resetDocument,
+    reloadChunks,
     setIsStreaming,
     flushSave,
     keepMyVersion,

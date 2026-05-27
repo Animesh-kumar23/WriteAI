@@ -5,7 +5,7 @@ const { generateDocx } = require("../utils/docx.generator");
 const { getFullDocumentContent } = require("../utils/documentChunks");
 const Document = require("../models/document");
 
-const RESULT_TTL_SECONDS = 5 * 60; // 5 minutes
+const RESULT_TTL_SECONDS = 30 * 60; // 30 minutes — long enough for users who walk away mid-export
 
 function createExportWorker() {
   if (!bullmqConnection) return null;

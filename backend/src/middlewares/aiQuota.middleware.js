@@ -35,8 +35,9 @@ async function checkAIDailyQuota(req, res, next) {
     res.setHeader("X-AI-Daily-Limit", ENV.AI_DAILY_LIMIT);
 
     return next();
-  } catch {
-    // Redis error — degrade gracefully
+  } catch (err) {
+    // Redis error — degrade gracefully, but log so silent quota bypass is visible.
+    console.error("AI quota check failed (Redis):", err);
     return next();
   }
 }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
 
@@ -11,30 +11,35 @@ export function AuthContextProvider({ children }) {
 
   // Verify cookie on every mount by asking the server
   useEffect(() => {
+    const controller = new AbortController();
     const checkAuthStatus = async () => {
       try {
-        const { data } = await axiosInstance.get(API_ENDPOINTS.AUTH.ME);
+        const { data } = await axiosInstance.get(API_ENDPOINTS.AUTH.ME, {
+          signal: controller.signal,
+        });
         setUser(data.user);
         setIsAuthenticated(true);
-      } catch {
+      } catch (err) {
+        if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") return;
         setUser(null);
         setIsAuthenticated(false);
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     };
 
     checkAuthStatus();
+    return () => controller.abort();
   }, []);
 
   // Called after login/register — user data comes from the response body
-  const authenticateUser = (userInfo) => {
+  const authenticateUser = useCallback((userInfo) => {
     setIsAuthenticated(true);
     setUser(userInfo);
-  };
+  }, []);
 
   // Called on logout — clears the HttpOnly cookie server-side
-  const unauthenticateUser = async (callback) => {
+  const unauthenticateUser = useCallback(async (callback) => {
     try {
       await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
     } catch {
@@ -43,26 +48,25 @@ export function AuthContextProvider({ children }) {
     setIsAuthenticated(false);
     setUser(null);
     callback?.();
-  };
+  }, []);
 
-  const updateUser = (updatedUserInfo) => {
+  const updateUser = useCallback((updatedUserInfo) => {
     setUser((prev) => ({ ...prev, ...updatedUserInfo }));
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated,
-        authenticateUser,
-        unauthenticateUser,
-        updateUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated,
+      authenticateUser,
+      unauthenticateUser,
+      updateUser,
+    }),
+    [user, isLoading, isAuthenticated, authenticateUser, unauthenticateUser, updateUser]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {
