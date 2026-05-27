@@ -1,0 +1,21 @@
+const jwt = require("jsonwebtoken");
+const ENV = require("../configs/env");
+
+async function authenticate(req, res, next) {
+  const token = req.cookies?.token;
+
+  if (!token) {
+    return res.status(401).json({ error: "No token provided!" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, ENV.JWT_SECRET_KEY);
+    req.user = { id: decoded.id };
+    next();
+  } catch (error) {
+    console.error("Error authenticating user:", error);
+    return res.status(401).json({ error: "Invalid or expired token!" });
+  }
+}
+
+module.exports = { authenticate };

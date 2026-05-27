@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- ── Primary SEO ────────────────────────────────────────────── -->
+    <title>WriteAI — AI Writing Assistant for Long-Form Documents</title>
+
+    <meta
+      name="description"
+      content="WriteAI is a free AI writing assistant that helps you draft, edit, rewrite, and export long-form documents as PDF or DOCX. Powered by Google Gemini."
+    />
+
+    <meta
+      name="keywords"
+      content="AI writing assistant, AI document editor, write with AI, AI content generator, PDF export, DOCX export, Gemini AI writing, long-form writing tool"
+    />
+
+    <meta name="author" content="Animesh Kumar" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#7c3aed" />
+    <meta name="application-name" content="WriteAI" />
+
+    <!--
+      canonical: replace with your live URL once deployed
+      e.g. https://writeai.onrender.com/
+    -->
+    <link rel="canonical" href="https://writeai.onrender.com/" />
+
+    <!-- ── Open Graph (Facebook / LinkedIn / Slack previews) ──────── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WriteAI" />
+    <meta
+      property="og:title"
+      content="WriteAI — AI Writing Assistant for Long-Form Documents"
+    />
+    <meta
+      property="og:description"
+      content="Draft, edit, rewrite, and export professional documents with AI. Streaming generation, chunk-based autosave, PDF/DOCX export."
+    />
+    <!--
+      Replace with absolute URL: https://writeai.onrender.com/images/hero-image.png
+      OG images must be absolute URLs to work on social platforms.
+    -->
+    <meta property="og:image" content="https://writeai.onrender.com/images/hero-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="WriteAI document editor interface" />
+    <meta property="og:url" content="https://writeai.onrender.com/" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ── Twitter / X Card ───────────────────────────────────────── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="WriteAI — AI Writing Assistant for Long-Form Documents"
+    />
+    <meta
+      name="twitter:description"
+      content="Draft, edit, rewrite, and export professional documents with AI."
+    />
+    <meta name="twitter:image" content="https://writeai.onrender.com/images/hero-image.png" />
+    <meta name="twitter:image:alt" content="WriteAI document editor interface" />
+    <meta name="twitter:creator" content="@Animesh_kumar23" />
+
+    <!-- ── Structured Data (JSON-LD) ─────────────────────────────── -->
+    <!--
+      Tells Google this is a web application, which can appear in
+      "rich results" and improves how the search snippet looks.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "WriteAI",
+        "url": "https://writeai.onrender.com/",
+        "description": "AI-powered writing assistant for drafting, editing, and exporting professional long-form documents as PDF or DOCX.",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Web",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Animesh Kumar",
+          "url": "https://github.com/Animesh-kumar23"
+        },
+        "featureList": [
+          "AI content generation with Google Gemini",
+          "Streaming AI text output",
+          "PDF export",
+          "DOCX export",
+          "Markdown editor",
+          "Document import (PDF and DOCX)"
+        ]
+      }
+    </script>
+
+    <!-- ── Performance hints ──────────────────────────────────────── -->
+    <!--
+      Preload the hero image so the browser fetches it as early as
+      possible — this directly improves the Lighthouse LCP score.
+    -->
+    <link
+      rel="preload"
+      as="image"
+      href="/images/hero-image.png"
+      fetchpriority="high"
+    />
+
+    <!-- Tell the browser to do DNS lookups early for external origins -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+
+    <!-- ── Web App Manifest ───────────────────────────────────────── -->
+    <!--
+      Required for Lighthouse "Installable as PWA" check and better
+      mobile browser behavior (add-to-homescreen, splash screen, etc.)
+    -->
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- ── App Icons ─────────────────────────────────────────────── -->
+    <link rel="shortcut icon" href="/writeai-favicon.png?v=3" />
+    <link rel="icon" href="/writeai-favicon.png?v=3" />
+    <link rel="apple-touch-icon" href="/writeai-favicon.png?v=3" />
+  </head>
+
+  <body>
+    <!--
+      Inline theme script: runs synchronously before React mounts so
+      there is no flash of wrong theme (FOUT) on page load.
+    -->
+    <script>
+      (function () {
+        var stored = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        if (stored === "dark" || (!stored && prefersDark)) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

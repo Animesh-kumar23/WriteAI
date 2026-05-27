@@ -1,0 +1,122 @@
+import { API_BASE_URL } from "../utils/api-endpoints";
+import { ChevronDown, ChevronUp, LogOut, Moon, Sun, User2 } from "lucide-react";
+import { Link } from "react-router";
+import { useTheme } from "../contexts/ThemeContext";
+
+const ProfileMenu = ({
+  isOpen,
+  onToggle,
+  avatarUrl,
+  username,
+  email,
+  signoutCallback,
+}) => {
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <nav onClick={(event) => event.stopPropagation()} className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+        className="rounded-xl p-2 inline-flex items-center gap-x-2 md:gap-x-3 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-slate-800 focus-visible:bg-gray-50 dark:focus-visible:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+      >
+        {avatarUrl ? (
+          <img
+            src={`${API_BASE_URL}${avatarUrl}`}
+            alt={`${username}'s avatar`}
+            className="size-8 md:size-9 object-cover rounded-xl shrink-0"
+          />
+        ) : (
+          <span className="size-8 md:size-9 bg-linear-to-br from-violet-400 to-violet-500 rounded-xl inline-flex justify-center items-center shrink-0">
+            <span className="text-white text-xs md:text-sm font-semibold">
+              {username?.charAt(0)?.toUpperCase()}
+            </span>
+          </span>
+        )}
+
+        <span className="hidden md:inline-flex md:flex-col text-left min-w-0 max-w-[180px]">
+          <span className="text-gray-900 dark:text-slate-50 text-sm font-medium truncate">
+            {username}
+          </span>
+          <span className="text-gray-500 dark:text-slate-400 text-xs truncate">
+            {email}
+          </span>
+        </span>
+
+        {isOpen ? (
+          <ChevronUp className="size-4 text-gray-400 dark:text-slate-500 shrink-0" />
+        ) : (
+          <ChevronDown className="size-4 text-gray-400 dark:text-slate-500 shrink-0" />
+        )}
+      </button>
+
+      {/* Dropdown menu */}
+      {isOpen && (
+        <div className="w-56 md:w-64 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg dark:shadow-black/30 mt-2 absolute right-0 z-50 overflow-hidden">
+          {/* User info section */}
+          <div className="border-b border-gray-100 dark:border-slate-700 px-3 py-3">
+            <p className="text-gray-900 dark:text-slate-50 text-sm font-medium truncate">
+              {username}
+            </p>
+            <p className="text-gray-500 dark:text-slate-400 text-xs truncate">
+              {email}
+            </p>
+          </div>
+
+          {/* Appearance toggle row */}
+          <div className="border-b border-gray-100 dark:border-slate-700 px-3 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-x-2 text-sm text-gray-700 dark:text-slate-300">
+              {isDark ? (
+                <Sun className="size-4 text-amber-400" />
+              ) : (
+                <Moon className="size-4 text-slate-500" />
+              )}
+              <span>{isDark ? "Light mode" : "Dark mode"}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 ${
+                isDark ? "bg-violet-500" : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`size-3.5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                  isDark ? "translate-x-[18px]" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Menu items */}
+          <div className="py-1">
+            <Link
+              to="/profile"
+              className="flex items-center gap-x-2 w-full text-sm text-gray-700 dark:text-slate-300 px-3 py-2 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-slate-700 focus-visible:bg-gray-50 dark:focus-visible:bg-slate-700 focus-visible:outline-none"
+            >
+              <User2 className="size-4 text-gray-500 dark:text-slate-400" />
+              <span>View Profile</span>
+            </Link>
+          </div>
+
+          {/* Sign out section */}
+          <div className="border-t border-gray-100 dark:border-slate-700 py-1">
+            <button
+              type="button"
+              onClick={signoutCallback}
+              className="flex items-center gap-x-2 w-full text-red-600 dark:text-red-400 text-sm px-3 py-2 transition-colors duration-200 hover:bg-red-50 dark:hover:bg-red-500/10 focus-visible:bg-red-50 dark:focus-visible:bg-red-500/10 focus-visible:outline-none"
+            >
+              <LogOut className="size-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+export default ProfileMenu;
