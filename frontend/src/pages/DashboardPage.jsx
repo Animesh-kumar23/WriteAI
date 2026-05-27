@@ -112,23 +112,28 @@ function DashboardPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchDocuments = async () => {
       setIsLoading(true);
 
       try {
-        const { data } = await axiosInstance.get(API_ENDPOINTS.DOCUMENTS.GET_ALL);
+        const { data } = await axiosInstance.get(API_ENDPOINTS.DOCUMENTS.GET_ALL, {
+          signal: controller.signal,
+        });
         setDocuments(data.documents);
       } catch (error) {
+        if (error?.name === "CanceledError" || error?.code === "ERR_CANCELED") return;
         console.error("Error fetching documents:", error);
         toast.error("Failed to load your documents!", {
           duration: 5000,
         });
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     };
 
     fetchDocuments();
+    return () => controller.abort();
   }, []);
 
   const handleDeleteDocument = async () => {

@@ -42,7 +42,11 @@ async function initLimiters() {
     max: 40,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user.id,
+    // These limiters run only on authenticated routes, so req.user is always set.
+    // The req.ip fallback is a safety net for mis-ordered middleware, not normal
+    // traffic — suppress the IPv6 warning since it won't be hit in practice.
+    keyGenerator: (req) => req.user?.id ?? req.ip,
+    validate: { keyGeneratorIpFallback: false },
     message: { error: "AI generation limit reached, try again in an hour." },
     store: makeStore("rl_ai:"),
   });
@@ -52,7 +56,8 @@ async function initLimiters() {
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user.id,
+    keyGenerator: (req) => req.user?.id ?? req.ip,
+    validate: { keyGeneratorIpFallback: false },
     message: { error: "Export limit reached, try again in an hour." },
     store: makeStore("rl_export:"),
   });
