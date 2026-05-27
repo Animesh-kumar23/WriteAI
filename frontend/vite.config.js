@@ -30,17 +30,19 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
 
-          if (id.includes("/react-dom/") || id.includes("/react/")) {
-            return "vendor-react";
-          }
-          if (id.includes("/@dnd-kit/")) {
-            return "vendor-dnd";
-          }
-
-          // CodeMirror + lezer intentionally NOT split into their own chunk.
-          // Isolating them causes a Rollup TDZ circular-dep error at runtime:
+          // NOTE: Do NOT split React (react / react-dom) into its own chunk.
+          // Libraries like react-hot-toast, sonner, and lucide-react call
+          // React.createContext() at module-init time. When React lives in a
+          // separate chunk, cross-chunk ES-module binding order can leave
+          // `React` undefined at that point →
+          //   "Cannot read properties of undefined (reading 'createContext')"
+          //
+          // NOTE: CodeMirror + lezer also must NOT be isolated into their own
+          // chunk — they have internal circular deps that cause a Rollup TDZ
+          // error at runtime:
           //   "Cannot access 'X' before initialization"
-          // Merging into the general vendor chunk avoids this.
+          //
+          // Safest rule: everything from node_modules → one "vendor" chunk.
           return "vendor";
         },
       },
