@@ -9,8 +9,8 @@ const showContact = import.meta.env.VITE_SHOW_CONTACT_INFO === "true";
 
 const socials = [
   {
-    href: "https://github.com/Animesh-kumar23",
-    ariaLabel: "Visit my GitHub",
+    href: "https://github.com/Animesh-kumar23/WriteAI",
+    ariaLabel: "Visit the WriteAI GitHub repository",
     imgSrc: "/social-icons/github.svg",
   },
   {
@@ -86,7 +86,7 @@ function Footer() {
                 </a>
               ) : (
                 <span className="text-violet-400 text-sm sm:text-base">
-                  animeshkumar.bgs@gmail.com
+                  alive590@gmail.com
                 </span>
               )}
             </div>
@@ -143,14 +143,20 @@ function Footer() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-y-3 sm:gap-y-0">
             <p className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
               &copy; {new Date().getFullYear()} WriteAI — Licensed under the{" "}
-              <a
-                href="https://github.com/Animesh-kumar23/WriteAI/blob/main/LICENSE"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2 transition-colors hover:text-violet-400 focus-visible:text-violet-400"
-              >
-                Apache 2.0 License
-              </a>
+              {showContact ? (
+                <a
+                  href="https://github.com/Animesh-kumar23/WriteAI/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 transition-colors hover:text-violet-400 focus-visible:text-violet-400"
+                >
+                  Apache 2.0 License
+                </a>
+              ) : (
+                <span className="underline underline-offset-2">
+                  Apache 2.0 License
+                </span>
+              )}
             </p>
 
             <p className="text-gray-500 text-xs sm:text-sm flex items-center gap-x-1.5">
@@ -168,7 +174,7 @@ function Footer() {
                     AnimeshKumar
                   </a>
                 ) : (
-                  <span className="text-white">AnimeshKumar</span>
+                  <span className="text-white">Alive590</span>
                 )}
               </span>
             </p>
