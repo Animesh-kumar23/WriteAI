@@ -52,14 +52,7 @@ app.use("/uploads", (req, res, next) => {
 });
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// PRODUCTION: serve React frontend
-if (ENV.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
-
-  app.get("/{*any}", (_, res) => {
-    res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
-  });
-}
+// Frontend is deployed separately on Vercel — backend is API-only.
 
 // ERROR HANDLING - Multer specific errors
 app.use((err, _, res, next) => {

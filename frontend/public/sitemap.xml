@@ -6,11 +6,11 @@
   Update <lastmod> whenever you make meaningful content changes to the page.
 
   Submit this URL in Google Search Console after deploying:
-    https://writeai.onrender.com/sitemap.xml
+    https://writeai.vercel.app/sitemap.xml
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://writeai.onrender.com/</loc>
+    <loc>https://writeai.vercel.app/</loc>
     <lastmod>2026-05-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>

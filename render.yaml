@@ -1,15 +1,12 @@
 ## Render Blueprint — https://render.com/docs/blueprint-spec
 ##
-## Single Web Service: the Express backend serves the pre-built React
-## frontend from frontend/dist in production mode.
+## Backend-only Web Service. The React frontend is deployed separately on Vercel.
 ##
 ## Deploy steps:
-##   1. Push this file to GitHub (already done if you're reading this).
-##   2. Go to https://dashboard.render.com/new/blueprint
-##   3. Connect the Animesh-kumar23/WriteAI repo.
-##   4. Render will detect this file and create the service automatically.
-##   5. Fill in the four "sync: false" secret vars in the Render dashboard
-##      before the first deploy (or set them via Environment tab).
+##   1. Go to https://dashboard.render.com/new/blueprint
+##   2. Connect Animesh-kumar23/WriteAI repo → Render detects this file.
+##   3. Fill in the four "sync: false" secret vars in the Environment tab
+##      before the first deploy finishes.
 
 services:
   - type: web
@@ -19,20 +16,14 @@ services:
     plan: free
 
     # ── Build ──────────────────────────────────────────────────────────
-    # 1. Install pnpm (not in PATH by default on Render's build image)
-    # 2. Build the React frontend → frontend/dist/
-    # 3. Install only production deps for the backend
-    buildCommand: >-
-      npm install -g pnpm &&
-      cd frontend && pnpm install && pnpm run build &&
-      cd ../backend && pnpm install --prod
+    # Install pnpm, then install only production backend deps.
+    buildCommand: npm install -g pnpm && cd backend && pnpm install --prod
 
     # ── Start ─────────────────────────────────────────────────────────
     startCommand: node backend/src/server.js
 
     # ── Health check ──────────────────────────────────────────────────
-    # /api/auth/me returns 401 (unauthenticated) — that's a valid HTTP
-    # response, not a crash, so Render marks the instance as healthy.
+    # 401 is a valid HTTP response (not a crash) — Render marks it healthy.
     healthCheckPath: /api/auth/me
 
     # ── Environment variables ─────────────────────────────────────────
@@ -40,18 +31,17 @@ services:
       - key: NODE_ENV
         value: production
 
-      # The backend CORS origin and canonical frontend URL.
-      # Must match the Render service URL exactly (service name = writeai).
+      # CORS origin — must match your Vercel frontend URL exactly.
       - key: CLIENT_URL
-        value: https://writeai.onrender.com
+        value: https://writeai.vercel.app
 
-      # ── Secrets — fill these in the Render dashboard ────────────────
+      # ── Secrets — set these in the Render dashboard ─────────────────
       # Dashboard → writeai → Environment → Add Environment Variable
       - key: DB_URI
         sync: false   # mongodb+srv://animeshkumar23:<pass>@cluster0...
 
       - key: JWT_SECRET_KEY
-        sync: false   # 128-char hex secret (see backend/.env)
+        sync: false   # 128-char hex secret
 
       - key: GEMINI_API_KEY
         sync: false   # AIzaSy... from Google AI Studio
