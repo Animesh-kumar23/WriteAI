@@ -2,22 +2,46 @@ import { useAuthContext } from "../../contexts/AuthContext";
 import { Link } from "react-router";
 import LogoIcon from "../LogoIcon";
 
-const socials = [
+// Controlled by VITE_SHOW_CONTACT_INFO=true in the deployment env vars.
+// When false: buttons render but do nothing on click (safe to share publicly).
+// When true: all links are live (share with people you want to know your info).
+const showContact = import.meta.env.VITE_SHOW_CONTACT_INFO === "true";
 
+const socials = [
   {
     href: "https://github.com/Animesh-kumar23",
     ariaLabel: "Visit my GitHub",
-    icon: null,
     imgSrc: "/social-icons/github.svg",
   },
   {
     href: "https://www.linkedin.com/in/animesh-kumar-78620217b/",
     ariaLabel: "Visit my LinkedIn",
-    icon: null,
     imgSrc: "/social-icons/linkedin.svg",
   },
-
 ];
+
+function SocialButton({ href, ariaLabel, imgSrc }) {
+  const cls =
+    "size-9 sm:size-10 bg-white/5 backdrop-blur-sm rounded-lg inline-flex justify-center items-center transition-all duration-200 hover:bg-violet-600 hover:scale-101 focus-visible:bg-violet-600 focus-visible:scale-101";
+
+  const inner = (
+    <img src={imgSrc} alt="" className="size-4 sm:size-5 brightness-0 invert" />
+  );
+
+  if (showContact) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={cls}>
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" aria-label={ariaLabel} className={cls} onClick={() => {}}>
+      {inner}
+    </button>
+  );
+}
 
 function Footer() {
   const { isAuthenticated } = useAuthContext();
@@ -53,39 +77,27 @@ function Footer() {
                 Helping writers think, draft, and create with AI assistance.
               </p>
 
-              <a
-                href="mailto:animeshkumar.bgs@gmail.com"
-                className="text-violet-400 text-sm sm:text-base transition-colors duration-200 hover:text-violet-300"
-              >
-                animeshkumar.bgs@gmail.com
-              </a>
+              {showContact ? (
+                <a
+                  href="mailto:animeshkumar.bgs@gmail.com"
+                  className="text-violet-400 text-sm sm:text-base transition-colors duration-200 hover:text-violet-300"
+                >
+                  animeshkumar.bgs@gmail.com
+                </a>
+              ) : (
+                <span className="text-violet-400 text-sm sm:text-base">
+                  animeshkumar.bgs@gmail.com
+                </span>
+              )}
             </div>
 
-            {/* Social links*/}
+            {/* Social links */}
             <ul className="pt-2 flex items-center gap-x-3">
-              {socials.map(
-                ({ href, ariaLabel, icon: SocialIcon, imgSrc }, index) => (
-                  <li key={index}>
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={ariaLabel}
-                      className="size-9 sm:size-10 bg-white/5 backdrop-blur-sm rounded-lg inline-flex justify-center items-center transition-all duration-200 hover:bg-violet-600 hover:scale-101 focus-visible:bg-violet-600 focus-visible:scale-101"
-                    >
-                      {SocialIcon ? (
-                        <SocialIcon className="size-4 sm:size-5" />
-                      ) : (
-                        <img
-                          src={imgSrc}
-                          alt=""
-                          className="size-4 sm:size-5 brightness-0 invert"
-                        />
-                      )}
-                    </a>
-                  </li>
-                )
-              )}
+              {socials.map((social, index) => (
+                <li key={index}>
+                  <SocialButton {...social} />
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -126,13 +138,13 @@ function Footer() {
           </nav>
         </div>
 
-        {/* Bottom bar - copyright and attribution */}
+        {/* Bottom bar */}
         <div className="border-t border-white/10 py-6 sm:py-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-y-3 sm:gap-y-0">
             <p className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
               &copy; {new Date().getFullYear()} WriteAI — Licensed under the{" "}
               <a
-                href="https://github.com/Animesh-kumar23/writeai/blob/main/LICENSE"
+                href="https://github.com/Animesh-kumar23/WriteAI/blob/main/LICENSE"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-2 transition-colors hover:text-violet-400 focus-visible:text-violet-400"
@@ -146,14 +158,18 @@ function Footer() {
               <span className="text-violet-400 text-base">💜</span>
               <span>
                 by{" "}
-                <a
-                  href="https://github.com/Animesh-kumar23"
-                  target="_blank"
-                  className="text-white transition-all duration-200 hover:underline focus-visible:underline"
-                >
-                  AnimeshKumar
-                </a>
-                {/* , for creators */}
+                {showContact ? (
+                  <a
+                    href="https://github.com/Animesh-kumar23"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white transition-all duration-200 hover:underline focus-visible:underline"
+                  >
+                    AnimeshKumar
+                  </a>
+                ) : (
+                  <span className="text-white">AnimeshKumar</span>
+                )}
               </span>
             </p>
           </div>
