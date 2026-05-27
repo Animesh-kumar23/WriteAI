@@ -12,6 +12,8 @@
 
 **[→ writeai-teal.vercel.app](https://writeai-teal.vercel.app)**
 
+![WriteAI landing page](docs/screenshots/landing.png)
+
 ---
 
 ## Why I Built This
@@ -77,6 +79,19 @@ Documents are stored as ordered `DocumentChunk` records in MongoDB. The editor t
 - Atlas Search with fuzzy matching (regex fallback in dev)
 - ZIP bomb detection on DOCX import
 - Graceful degradation when Redis is unavailable
+
+---
+
+## Screenshots
+
+### Dashboard — document library with AI-assisted creation
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Editor — markdown editing with streaming AI actions
+![Editor](docs/screenshots/editor.png)
+
+### Search — fuzzy search across document titles and chunk content
+![Search](docs/screenshots/search.png)
 
 ---
 
