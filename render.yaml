@@ -31,9 +31,11 @@ services:
       - key: NODE_ENV
         value: production
 
-      # CORS origin — must match your Vercel frontend URL exactly.
+      # Comma-separated list of allowed CORS origins (all Vercel deployments).
+      # Format: https://writeai.vercel.app,https://writeai-private.vercel.app
+      # Update in Render dashboard once both Vercel URLs are known.
       - key: CLIENT_URL
-        value: https://writeai.vercel.app
+        value: https://writeai.vercel.app,https://writeai-private.vercel.app
 
       # ── Secrets — set these in the Render dashboard ─────────────────
       # Dashboard → writeai → Environment → Add Environment Variable

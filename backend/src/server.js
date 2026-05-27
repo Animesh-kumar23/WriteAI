@@ -26,9 +26,16 @@ app.use(helmet());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// CLIENT_URL may be a comma-separated list for multiple Vercel deployments
+// e.g. "https://writeai.vercel.app,https://writeai-private.vercel.app"
+const allowedOrigins = ENV.CLIENT_URL.split(",").map((o) => o.trim()).filter(Boolean);
 app.use(
   cors({
-    origin: ENV.CLIENT_URL,
+    origin: (origin, callback) => {
+      // allow server-to-server / curl (no Origin header) in dev
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type"],
