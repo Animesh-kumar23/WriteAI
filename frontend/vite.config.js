@@ -33,14 +33,14 @@ export default defineConfig({
           if (id.includes("/react-dom/") || id.includes("/react/")) {
             return "vendor-react";
           }
-          if (id.includes("/@codemirror/") || id.includes("/codemirror/") || id.includes("/@lezer/")) {
-            return "vendor-editor";
-          }
           if (id.includes("/@dnd-kit/")) {
             return "vendor-dnd";
           }
 
-          // Everything else in node_modules goes into a single vendor chunk.
+          // CodeMirror + lezer intentionally NOT split into their own chunk.
+          // Isolating them causes a Rollup TDZ circular-dep error at runtime:
+          //   "Cannot access 'X' before initialization"
+          // Merging into the general vendor chunk avoids this.
           return "vendor";
         },
       },
