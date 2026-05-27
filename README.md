@@ -5,7 +5,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com)
-[![Redis](https://img.shields.io/badge/Redis-Upstash-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
+[![Redis](https://img.shields.io/badge/Redis-Cloud-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Queue-FF4F64?style=flat-square)](https://docs.bullmq.io)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
@@ -128,7 +128,7 @@ The biggest lessons:
 | Backend | Node.js, Express 5, Mongoose 8 |
 | Database | MongoDB (Atlas in prod) |
 | Queue | BullMQ |
-| Cache / Locks | Redis (Upstash in prod) |
+| Cache / Locks | Redis (Redis Cloud in prod) |
 | AI | Google Gemini 2.5 Flash |
 | Export | PDFKit, docx |
 | Import | Mammoth, pdf-parse |
@@ -143,9 +143,8 @@ The biggest lessons:
 **Prerequisites:** Node.js 20+, MongoDB, Redis (optional — features degrade gracefully without it)
 
 ```bash
-# TODO: update with your repo URL
-git clone <your-repo-url>
-cd writeai
+git clone https://github.com/Animesh-kumar23/WriteAI.git
+cd WriteAI
 ```
 
 ### Backend
@@ -217,7 +216,7 @@ writeai/
 
 ## Deployment
 
-WriteAI runs on [Render](https://render.com) with [MongoDB Atlas](https://mongodb.com/atlas) and [Upstash Redis](https://upstash.com). The Express server serves the React frontend's production build in a single process — no separate static hosting needed.
+WriteAI runs on [Render](https://render.com) with [MongoDB Atlas](https://mongodb.com/atlas) and [Redis Cloud](https://redis.io). The Express server serves the React frontend's production build in a single process — no separate static hosting needed.
 
 The root `Dockerfile` is a multi-stage build: Stage 1 compiles the React frontend with Vite, Stage 2 produces a lean Node.js image with only production dependencies.
 
