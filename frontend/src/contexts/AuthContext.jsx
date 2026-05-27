@@ -38,13 +38,14 @@ export function AuthContextProvider({ children }) {
     setUser(userInfo);
   }, []);
 
-  // Called on logout — clears the HttpOnly cookie server-side
+  // Called on logout — clears the HttpOnly cookie server-side and localStorage token
   const unauthenticateUser = useCallback(async (callback) => {
     try {
       await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
     } catch {
       // ignore — clear local state regardless
     }
+    localStorage.removeItem("token");
     setIsAuthenticated(false);
     setUser(null);
     callback?.();

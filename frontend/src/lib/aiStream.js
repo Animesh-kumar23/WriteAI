@@ -8,6 +8,10 @@ export async function streamAIContent(payload, onChunk, signal) {
       credentials: "include", // send HttpOnly cookie
       headers: {
         "Content-Type": "application/json",
+        // Bearer token for mobile browsers where the cross-site cookie is dropped
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }),
       },
       body: JSON.stringify(payload),
       signal,
