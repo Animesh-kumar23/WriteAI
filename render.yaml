@@ -35,7 +35,7 @@ services:
       # Format: https://writeai.vercel.app,https://writeai-private.vercel.app
       # Update in Render dashboard once both Vercel URLs are known.
       - key: CLIENT_URL
-        value: https://writeai.vercel.app,https://writeai-private.vercel.app
+        value: https://write-ai-six.vercel.app,https://writeai-private.vercel.app
 
       # ── Secrets — set these in the Render dashboard ─────────────────
       # Dashboard → writeai → Environment → Add Environment Variable
