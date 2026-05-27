@@ -1,0 +1,460 @@
+@import url("https://fonts.googleapis.com/css2?family=Elms+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap");
+@import "tailwindcss";
+@custom-variant hover (&:hover);
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Elms Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-display caret-violet-500 selection:bg-violet-500/30;
+
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1 h-1 bg-violet-50;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-violet-200 rounded-sm;
+    @apply hover:bg-violet-400;
+  }
+
+  .dark ::-webkit-scrollbar {
+    @apply bg-slate-800;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-sm;
+    @apply hover:bg-slate-500;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+
+  button:disabled,
+  [role="button"]:disabled {
+    @apply cursor-not-allowed;
+  }
+
+  code,
+  pre {
+    @apply font-mono;
+  }
+}
+
+@layer components {
+  /* document page reading content styles */
+  .reading-content p {
+    @apply text-justify hyphens-auto mb-6;
+  }
+
+  .reading-content p:first-child {
+    @apply mt-0;
+  }
+
+  .reading-content p:last-child {
+    @apply mb-0;
+  }
+
+  .reading-content strong {
+    @apply text-[#1f2937] font-semibold;
+  }
+
+  .dark .reading-content strong {
+    @apply text-slate-100;
+  }
+
+  .dark .reading-content p {
+    @apply text-slate-300;
+  }
+
+  .reading-content em {
+    @apply italic;
+  }
+
+  /* @uiw-react-md-editor component styles */
+  .w-md-editor-toolbar {
+    padding: 8px 4px !important;
+  }
+
+  .w-md-editor-toolbar ul {
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+  }
+
+  .w-md-editor-toolbar ul li button {
+    height: 36px !important;
+    width: 36px !important;
+    color: #4a5568 !important;
+    font-size: 20px !important;
+    padding: 8px !important;
+    min-width: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  @media (max-width: 640px) {
+    .w-md-editor-toolbar ul li button {
+      height: 32px !important;
+      width: 32px !important;
+      font-size: 18px !important;
+      padding: 6px !important;
+      min-width: 32px !important;
+    }
+  }
+
+  .w-md-editor-toolbar ul li button:focus {
+    background-color: #ede9fe !important;
+    color: #7c3aed !important;
+    outline: none !important;
+  }
+
+  .w-md-editor-toolbar ul li button:hover {
+    background-color: #8b5cf6 !important;
+    color: #f5f3ff !important;
+    border-radius: 6px !important;
+  }
+
+  .w-md-editor-text {
+    caret-color: #8b5cf6 !important;
+  }
+
+  .w-md-editor-text-pre > code,
+  .w-md-editor-text-input {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+  }
+
+  @media (max-width: 640px) {
+    .w-md-editor-text-pre > code,
+    .w-md-editor-text-input {
+      font-size: 13px !important;
+    }
+  }
+
+  .w-md-editor-preview {
+    padding: 1rem !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview {
+      padding: 1.5rem !important;
+    }
+  }
+
+  .w-md-editor-preview pre {
+    background-color: #1e293b !important;
+    border-radius: 0.5rem !important;
+    padding: 0.75rem !important;
+    overflow-x: auto !important;
+    margin: 0.75rem 0 !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview pre {
+      padding: 1rem !important;
+      margin: 1rem 0 !important;
+    }
+  }
+
+  .w-md-editor-preview code {
+    color: #e2e8f0 !important;
+    font-family: var(--font-mono) !important;
+    font-size: 12px !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview code {
+      font-size: 13px !important;
+    }
+  }
+
+  .w-md-editor-preview p code,
+  .w-md-editor-preview li code {
+    background-color: #f1f5f9 !important;
+    color: #db2777 !important;
+    padding: 0.125rem 0.375rem !important;
+    border-radius: 0.25rem !important;
+    font-size: 0.8125rem !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview p code,
+    .w-md-editor-preview li code {
+      font-size: 0.875rem !important;
+    }
+  }
+
+  .w-md-editor-preview h1 {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.75rem !important;
+    color: #0f172a !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview h1 {
+      font-size: 2rem !important;
+      margin-top: 2rem !important;
+      margin-bottom: 1rem !important;
+    }
+  }
+
+  .w-md-editor-preview h2 {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0.625rem !important;
+    color: #0f172a !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview h2 {
+      font-size: 1.5rem !important;
+      margin-top: 1.5rem !important;
+      margin-bottom: 0.75rem !important;
+    }
+  }
+
+  .w-md-editor-preview h3 {
+    font-size: 1.125rem !important;
+    font-weight: 600 !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #0f172a !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview h3 {
+      font-size: 1.25rem !important;
+      margin-top: 1.25rem !important;
+    }
+  }
+
+  .w-md-editor-preview p {
+    margin-bottom: 0.875rem !important;
+    line-height: 1.7 !important;
+    color: #334155 !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview p {
+      margin-bottom: 1rem !important;
+    }
+  }
+
+  .w-md-editor-preview ul,
+  .w-md-editor-preview ol {
+    margin: 0.875rem 0 !important;
+    padding-left: 1.25rem !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview ul,
+    .w-md-editor-preview ol {
+      margin: 1rem 0 !important;
+      padding-left: 1.5rem !important;
+    }
+  }
+
+  .w-md-editor-preview li {
+    margin-bottom: 0.5rem !important;
+    color: #334155 !important;
+  }
+
+  .w-md-editor-preview blockquote {
+    border-left: 4px solid #8b5cf6 !important;
+    padding-left: 0.875rem !important;
+    margin: 0.875rem 0 !important;
+    background-color: #f5f3ff !important;
+    padding: 0.625rem 0.875rem !important;
+    border-radius: 0.25rem !important;
+    color: #475569 !important;
+  }
+
+  @media (min-width: 640px) {
+    .w-md-editor-preview blockquote {
+      padding-left: 1rem !important;
+      margin: 1rem 0 !important;
+      padding: 0.75rem 1rem !important;
+    }
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-linear-to-r from-violet-600 via-purple-600 to-violet-600 bg-clip-text text-transparent;
+  }
+
+  /* Base animation class */
+  .animate-in {
+    animation-fill-mode: both;
+  }
+
+  .fade-in {
+    animation-name: fadeIn;
+  }
+
+  .slide-in-from-top {
+    animation-name: slideInFromTop;
+  }
+
+  .slide-in-from-right {
+    animation-name: slideInFromRight;
+  }
+
+  .slide-in-from-left {
+    animation-name: slideInFromLeft;
+  }
+}
+
+/* Keyframe definitions for custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Dark mode: CodeMirror / @uiw/react-codemirror ── */
+.dark .cm-editor {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+.dark .cm-editor .cm-content {
+  caret-color: #a78bfa !important;
+}
+.dark .cm-editor .cm-line {
+  color: #e2e8f0 !important;
+}
+.dark .cm-editor .cm-gutters {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #64748b !important;
+}
+.dark .cm-editor.cm-focused .cm-cursor {
+  border-left-color: #a78bfa !important;
+}
+.dark .cm-editor .cm-selectionBackground,
+.dark .cm-editor.cm-focused .cm-selectionBackground {
+  background-color: rgba(139, 92, 246, 0.25) !important;
+}
+
+/* ── Dark mode: document preview / reading content ── */
+.dark .reading-content h1,
+.dark .reading-content h2,
+.dark .reading-content h3,
+.dark .reading-content h4 {
+  color: #f1f5f9 !important;
+}
+
+/* ── Dark mode: md-editor (w-md-editor) ── */
+.dark .w-md-editor {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+.dark .w-md-editor-toolbar {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .w-md-editor-toolbar ul li button {
+  color: #94a3b8 !important;
+}
+
+.dark .w-md-editor-toolbar ul li button:hover {
+  background-color: #8b5cf6 !important;
+  color: #f5f3ff !important;
+}
+
+.dark .w-md-editor-text-container,
+.dark .w-md-editor-text {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .w-md-editor-text-input {
+  color: #e2e8f0 !important;
+}
+
+.dark .w-md-editor-preview {
+  background-color: #1e293b !important;
+}
+
+.dark .w-md-editor-preview h1,
+.dark .w-md-editor-preview h2,
+.dark .w-md-editor-preview h3 {
+  color: #f1f5f9 !important;
+}
+
+.dark .w-md-editor-preview p {
+  color: #cbd5e1 !important;
+}
+
+.dark .w-md-editor-preview li {
+  color: #cbd5e1 !important;
+}
+
+.dark .w-md-editor-preview p code,
+.dark .w-md-editor-preview li code {
+  background-color: #334155 !important;
+  color: #fb7185 !important;
+}
+
+.dark .w-md-editor-preview blockquote {
+  background-color: rgba(139, 92, 246, 0.1) !important;
+  border-color: #8b5cf6 !important;
+  color: #94a3b8 !important;
+}
+

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sitemap.xml — lists every public URL Google should crawl and index.
+
+  Only the landing page is public; everything else requires authentication.
+  Update <lastmod> whenever you make meaningful content changes to the page.
+
+  Submit this URL in Google Search Console after deploying:
+    https://writeai.onrender.com/sitemap.xml
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://writeai.onrender.com/</loc>
+    <lastmod>2026-05-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

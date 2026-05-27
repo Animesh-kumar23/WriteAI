@@ -1,0 +1,242 @@
+# WriteAI
+
+> AI-powered document editor built on chunk-based storage, streaming generation, and async export jobs.
+
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com)
+[![Redis](https://img.shields.io/badge/Redis-Upstash-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
+[![BullMQ](https://img.shields.io/badge/BullMQ-Queue-FF4F64?style=flat-square)](https://docs.bullmq.io)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
+
+---
+
+## Why I Built This
+
+I wanted to move beyond tutorial CRUD apps and build something that forced me to solve real engineering problems: large-document performance, concurrent edits, async background work, rate limiting, and AI cost control. What started as a simple save-the-whole-document approach kept breaking as documents grew — so I refactored into a chunk-based architecture, added conflict detection, moved exports off the request thread into a job queue, and built rate limiting that degrades gracefully when Redis is unavailable. This project is where I learned what production-oriented backend engineering actually looks like.
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────────────────────┐
+│           Browser (React 19)            │
+│  CodeMirror 6 editor · SSE AI streaming │
+└───────────────────┬──────────────────────┘
+                    │ REST / SSE
+         ┌──────────▼──────────┐
+         │    Express 5 API    │
+         │  JWT · Helmet · CORS│
+         └──┬──────┬──────┬───┘
+            │      │      │
+   ┌────────▼──┐ ┌─▼────┐ ┌▼───────────────┐
+   │  MongoDB  │ │Redis │ │ Gemini 2.5 Flash│
+   │  Chunks   │ │Locks │ │    (AI)         │
+   │  + Search │ │Quota │ └────────────────┘
+   └───────────┘ │Rate  │
+                 └──┬───┘
+             ┌──────▼──────┐
+             │   BullMQ    │
+             │Export Worker│
+             └──────┬──────┘
+                    │ result → Redis (short TTL)
+                    ▼
+             Browser download
+```
+
+Documents are stored as ordered `DocumentChunk` records in MongoDB. The editor tracks which chunks are dirty and sends only those on autosave. Exports run off-thread in a BullMQ worker. Redis handles AI concurrency locks, rate limiting, daily quotas, and temporary export results.
+
+---
+
+## Features
+
+### ✍️ Writing Experience
+- CodeMirror 6 markdown editor with live split preview
+- Chunk-based autosave — only changed sections are written to the DB
+- Save states: saved / saving / dirty / error
+- Import PDF or DOCX — text extracted and replaced into chunks
+- Export to styled PDF or DOCX via background queue
+- Full-text search across documents and chunk content
+
+### 🤖 AI Writing (Gemini 2.5 Flash)
+- 8 actions: Generate Draft, Continue, Rewrite, Expand, Shorten, Fix Grammar, Simplify, Custom Prompt
+- Streams tokens to the editor in real time via SSE
+- Configurable style, tone, audience, format, and length
+- Per-document lock prevents duplicate AI requests across tabs
+
+### 🏗️ Infrastructure
+- Chunk-based document storage with lazy loading in read view
+- Version-per-chunk conflict detection — 409 on mismatch, resolution modal in UI
+- Background export jobs (BullMQ) — non-blocking, retryable, cached in Redis
+- Multi-tier rate limiting: global, per-user, AI-specific, export-specific
+- Daily AI quota with automatic UTC midnight reset
+- Atlas Search with fuzzy matching (regex fallback in dev)
+- ZIP bomb detection on DOCX import
+- Graceful degradation when Redis is unavailable
+
+---
+
+## Engineering Challenges
+
+### Chunk-based document architecture
+
+The naive approach writes the entire document on every save. For long documents, that's wasteful — and it gets worse as documents grow. I split documents into ordered chunks with a `DocumentModel` class on the client that tracks which chunks are dirty. On autosave, only the changed chunks are sent in a single batch request. Clean separation between "what changed" and "what didn't."
+
+### Concurrent edit conflict detection
+
+Every chunk carries a version counter. When the client saves, it sends the version it last saw for each chunk. The server does a conditional update: if the server version no longer matches, the update fails and a 409 is returned with the conflicted chunk data. The editor shows a modal — "Keep Mine" forces an overwrite, "Use Server" resets the editor to the server state. Conflicts are resolved at the chunk level, not the full document.
+
+### Background export jobs
+
+PDF and DOCX generation is slow — parsing markdown, rendering fonts, embedding images. Running that on the request thread would block the API. I moved it into a BullMQ worker: the client gets a job ID immediately, then polls for status. When the worker finishes, it stores the result in Redis with a short TTL. The client fetches it for download. Jobs retry with exponential backoff on failure.
+
+### AI concurrency control
+
+Submitting the same AI request twice wastes API quota and creates race conditions in the editor. Before each Gemini call, the server acquires a Redis lock scoped to user + document. If the lock already exists, the request is rejected with 409. The lock expires automatically if the stream crashes, so it never gets permanently stuck. Users can still run AI generation on two different documents simultaneously.
+
+### Security
+
+| Threat | Mitigation |
+|---|---|
+| Path traversal | `coverImage` and `avatar` are only writable via dedicated multer upload endpoints — never via JSON body |
+| Prompt injection | All AI config fields are sanitized (HTML stripped, length-capped) before insertion into Gemini prompts |
+| CSRF | `httpOnly` JWT cookie + strict single-origin CORS |
+| XSS | `rehype-sanitize` in markdown preview; `escapeHtml` runs before all renderer substitutions |
+| Zip bomb on import | `adm-zip` checks uncompressed entry sizes before parsing — oversized archives are rejected |
+| NoSQL injection | All Mongoose queries use typed parameters; malformed ObjectIds return 400 before hitting the DB |
+
+---
+
+## What I Learned
+
+Building WriteAI taught me how quickly simple architectures break under real usage.
+
+The biggest lessons:
+- Naive full-document saves don't scale — granular writes matter
+- Background jobs are necessary for any work that takes more than a second
+- Concurrency bugs appear fast when autosave, AI generation, and multiple tabs run simultaneously
+- Rate limiting and cost controls are first-class requirements in AI products, not afterthoughts
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | React 19, Vite 7, Tailwind CSS 4, CodeMirror 6, Axios |
+| Backend | Node.js, Express 5, Mongoose 8 |
+| Database | MongoDB (Atlas in prod) |
+| Queue | BullMQ |
+| Cache / Locks | Redis (Upstash in prod) |
+| AI | Google Gemini 2.5 Flash |
+| Export | PDFKit, docx |
+| Import | Mammoth, pdf-parse |
+| Auth | JWT, bcryptjs |
+| Security | helmet, express-rate-limit, multer |
+| Infra | Docker, Render |
+
+---
+
+## Getting Started
+
+**Prerequisites:** Node.js 20+, MongoDB, Redis (optional — features degrade gracefully without it)
+
+```bash
+# TODO: update with your repo URL
+git clone <your-repo-url>
+cd writeai
+```
+
+### Backend
+
+```bash
+cd backend
+cp .env.example .env   # fill in DB_URI, JWT_SECRET_KEY, GEMINI_API_KEY
+pnpm install
+pnpm dev
+```
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env   # set VITE_API_BASE_URL=http://localhost:3000
+pnpm install
+pnpm dev
+```
+
+### Docker (local all-in-one)
+
+Starts MongoDB, Redis, backend (port 3000), and Vite dev server (port 5173) with hot reload.
+
+```bash
+cp .env.example .env   # fill in GEMINI_API_KEY and JWT_SECRET_KEY
+docker compose up --build
+```
+
+### Environment Variables
+
+**`backend/.env`**
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DB_URI` | ✅ | MongoDB connection string |
+| `JWT_SECRET_KEY` | ✅ | JWT signing secret |
+| `GEMINI_API_KEY` | ✅ | Google AI key |
+| `CLIENT_URL` | ✅ | Frontend origin for CORS |
+| `REDIS_URL` | No | Enables rate limiting, locks, and export cache |
+| `AI_DAILY_LIMIT` | No | Max AI calls per user per day (default: 100) |
+| `ATLAS_SEARCH_ENABLED` | No | `true` to use fuzzy Atlas Search in prod |
+
+---
+
+## Project Structure
+
+```
+writeai/
+├── backend/src/
+│   ├── configs/       # db, redis, env
+│   ├── controllers/   # auth, documents, ai, exports, import, search, profile
+│   ├── middlewares/   # auth, upload, rateLimit, aiQuota
+│   ├── models/        # User, Document, DocumentChunk
+│   ├── queues/        # export.queue.js (BullMQ)
+│   ├── workers/       # export.worker.js
+│   ├── routes/
+│   └── utils/         # pdf.generator, docx.generator, import.parser, documentChunks
+│
+└── frontend/src/
+    ├── components/    # edit-document, document-view, home, ui
+    ├── contexts/      # AuthContext, ThemeContext
+    ├── hooks/         # useDocumentEditor, useDocumentChunks, useSearch
+    ├── lib/           # documentModel.js, aiStream.js, axios.js
+    └── pages/         # Dashboard, EditDocument, Document, Landing, Profile, Auth
+```
+
+---
+
+## Deployment
+
+WriteAI runs on [Render](https://render.com) with [MongoDB Atlas](https://mongodb.com/atlas) and [Upstash Redis](https://upstash.com). The Express server serves the React frontend's production build in a single process — no separate static hosting needed.
+
+The root `Dockerfile` is a multi-stage build: Stage 1 compiles the React frontend with Vite, Stage 2 produces a lean Node.js image with only production dependencies.
+
+```bash
+docker build \
+  --build-arg VITE_API_BASE_URL=https://your-app.onrender.com \
+  -t writeai .
+
+docker run -p 3000:3000 --env-file backend/.env writeai
+```
+
+---
+
+## Screenshots
+
+*Coming soon*
+
+---
+
+## License
+
+[Apache 2.0](LICENSE)

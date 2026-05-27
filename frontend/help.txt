@@ -1,0 +1,11 @@
+cd "C:\Users\anime\OneDrive\Desktop\WriteAI\WriteAI\frontend"
+.\node_modules\.bin\vite.cmd
+
+
+Update the three hardcoded https://writeai.onrender.com
+ references in index.html and sitemap.xml to your real Render URL.
+  Then go to search.google.com/search-console,
+  add your property, and submit https://your-url/sitemap.xml.
+
+
+  
