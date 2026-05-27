@@ -17,6 +17,7 @@ function setAuthCookie(res, userId) {
     expiresIn: "7d",
   });
   res.cookie("token", token, COOKIE_OPTIONS);
+  return token; // returned so callers can include it in the response body
 }
 
 async function registerUser(req, res) {
@@ -36,7 +37,7 @@ async function registerUser(req, res) {
 
     const user = await User.create({ name, email: normalizedEmail, password });
 
-    setAuthCookie(res, user._id);
+    const token = setAuthCookie(res, user._id);
 
     return res.status(201).json({
       message: "User registered successfully!",
@@ -46,6 +47,7 @@ async function registerUser(req, res) {
         email: user.email,
         avatar: user.avatar,
       },
+      token,
     });
   } catch (error) {
     console.error("Error registering user:", error);
@@ -70,7 +72,7 @@ async function signInUser(req, res) {
       return res.status(401).json({ error: "Invalid credentials!" });
     }
 
-    setAuthCookie(res, user._id);
+    const token = setAuthCookie(res, user._id);
 
     return res.status(200).json({
       message: "User signed in successfully!",
@@ -80,6 +82,7 @@ async function signInUser(req, res) {
         email: user.email,
         avatar: user.avatar,
       },
+      token,
     });
   } catch (error) {
     console.error("Error signing in user:", error);
