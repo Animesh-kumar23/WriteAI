@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function Dropdown({ trigger, children, contentClassName = "" }) {
+export default function Dropdown({
+  trigger,
+  children,
+  contentClassName = "",
+  disabled = false,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownContainerRef = useRef(null);
 
@@ -18,13 +23,21 @@ export default function Dropdown({ trigger, children, contentClassName = "" }) {
     return () => document.removeEventListener("mousedown", handleOutsideClicks);
   }, [isOpen]);
 
-  const toggleDropdown = () => setIsOpen(!isOpen);
+  useEffect(() => {
+    if (disabled && isOpen) setIsOpen(false);
+  }, [disabled, isOpen]);
+
+  const toggleDropdown = () => {
+    if (disabled) return;
+    setIsOpen(!isOpen);
+  };
 
   return (
     <div ref={dropdownContainerRef} className="relative">
       <div
         onClick={toggleDropdown}
         onKeyDown={(e) => {
+          if (disabled) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             toggleDropdown();
@@ -33,7 +46,8 @@ export default function Dropdown({ trigger, children, contentClassName = "" }) {
         role="button"
         aria-haspopup="true"
         aria-expanded={isOpen}
-        tabIndex={0}
+        aria-disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
         className="inline-flex focus:outline-none focus-visible:outline-none"
       >
         {trigger}
