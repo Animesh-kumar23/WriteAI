@@ -59,10 +59,12 @@ Documents are stored as ordered `DocumentChunk` records in MongoDB. The editor t
 ### ✍️ Writing Experience
 - CodeMirror 6 markdown editor with live split preview
 - Chunk-based autosave — only changed sections are written to the DB
-- Save states: saved / saving / dirty / error
-- Import PDF or DOCX — text extracted and replaced into chunks
-- Export to styled PDF or DOCX via background queue
+- Save states: saved / saving / dirty / error, with a persistent status bubble
+- `Ctrl+S` save shortcut, inline title editing in the header, and a leave-guard (browser close + in-app nav) when there are unsaved changes
+- Import PDF or DOCX — text extracted and replaced into chunks; spinner feedback on the action button
+- Export to styled PDF or DOCX via background queue; export dropdown locks while a job is in flight
 - Full-text search across documents and chunk content
+- Dashboard with client-side sort (last edited / created / title), inline rename via a per-card 3-dot menu, and "Edited Nago · ~N words" metadata cached on every save
 
 ### 🤖 AI Writing (Gemini 2.5 Flash)
 - 8 actions: Generate Draft, Continue, Rewrite, Expand, Shorten, Fix Grammar, Simplify, Custom Prompt
