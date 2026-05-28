@@ -36,6 +36,7 @@ function EditDocumentPage() {
   const [saveStatus, setSaveStatus] = useState("saved");
   const [activeTab, setActiveTab] = useState("editor");
   const [isUploading, setIsUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
@@ -361,6 +362,7 @@ function EditDocumentPage() {
     const isDocx = format === "docx";
     const label = isDocx ? "document" : "PDF";
     const loadingToast = toast.loading(`Generating ${label}...`);
+    setIsExporting(true);
 
     try {
       const {
@@ -391,6 +393,8 @@ function EditDocumentPage() {
       console.error(`Error exporting ${format}:`, error);
       toast.dismiss(loadingToast);
       toast.error(`Failed to export ${label}!`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -466,12 +470,14 @@ function EditDocumentPage() {
             </button>
 
             <Dropdown
+              disabled={isExporting}
               trigger={
                 <Button
                   type="button"
                   variant="secondary"
                   icon={FileDown}
                   size="sm"
+                  isLoading={isExporting}
                 >
                   <span className="hidden sm:inline-flex items-center gap-1">
                     Export
@@ -484,12 +490,12 @@ function EditDocumentPage() {
                 </Button>
               }
             >
-              <DropdownItem onClick={handleExportPDF}>
+              <DropdownItem onClick={handleExportPDF} disabled={isExporting}>
                 <FileText className="text-slate-500 size-4" />
                 Export as PDF
               </DropdownItem>
 
-              <DropdownItem onClick={handleExportDocx}>
+              <DropdownItem onClick={handleExportDocx} disabled={isExporting}>
                 <FileCode className="text-slate-500 size-4" />
                 Export as DOCX
               </DropdownItem>

@@ -175,6 +175,7 @@ function CreateDocumentModal({
             label="Document Title"
             required
             placeholder="My new writing project"
+            disabled={isGenerating || isCreating}
           />
 
           <Input
@@ -185,6 +186,7 @@ function CreateDocumentModal({
             icon={Lightbulb}
             label="What do you want to create?"
             placeholder="Write a startup pitch deck draft for an AI SaaS..."
+            disabled={isGenerating || isCreating}
           />
 
 
@@ -196,6 +198,7 @@ function CreateDocumentModal({
                 variant="secondary"
                 onClick={handleCreateBlank}
                 isLoading={isCreating}
+                disabled={isGenerating}
               >
                 Start Blank
               </Button>
@@ -205,6 +208,7 @@ function CreateDocumentModal({
               type="button"
               variant="secondary"
               onClick={() => setIsAISettingsOpen(true)}
+              disabled={isGenerating || isCreating}
             >
               AI Settings
             </Button>
@@ -213,6 +217,7 @@ function CreateDocumentModal({
               type="button"
               onClick={handleGenerateWithAI}
               isLoading={isGenerating}
+              disabled={isCreating}
               icon={Sparkles}
             >
               Generate with AI

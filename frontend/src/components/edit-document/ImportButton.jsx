@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import { API_ENDPOINTS } from "../../utils/api-endpoints";
@@ -69,7 +69,11 @@ function ImportButton({ documentId, onImportComplete }) {
         className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Import document"
       >
-        <Upload className="size-4" />
+        {isImporting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Upload className="size-4" />
+        )}
       </button>
     </>
   );
