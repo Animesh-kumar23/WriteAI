@@ -3,8 +3,9 @@ import CustomPromptModal from "../components/edit-document/CustomPromptModal";
 import AISettingsModal from "../components/edit-document/AISettingsModal";
 import ConflictModal from "../components/edit-document/ConflictModal";
 import SearchModal from "../components/SearchModal";
+import Modal from "../components/ui/Modal";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useBlocker } from "react-router";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
@@ -28,6 +29,26 @@ import {
 } from "../components";
 
 import useDocumentEditor from "../hooks/useDocumentEditor";
+
+function LeaveConfirmModal({ isOpen, onStay, onLeave }) {
+  return (
+    <Modal isOpen={isOpen} onClose={onStay} title="Unsaved changes">
+      <div className="space-y-5">
+        <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base">
+          You have unsaved changes. Leaving this page will discard them.
+        </p>
+        <div className="flex justify-end items-center gap-x-2 md:gap-x-3">
+          <Button type="button" variant="secondary" onClick={onStay}>
+            Stay
+          </Button>
+          <Button type="button" variant="destructive" onClick={onLeave}>
+            Discard &amp; leave
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function EditDocumentPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +75,13 @@ function EditDocumentPage() {
 
   const { documentId } = useParams();
   const navigate = useNavigate();
+
+  const isDirty = saveStatus !== "saved";
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
 
   const {
     chunks,
@@ -157,6 +185,31 @@ function EditDocumentPage() {
       saveLockRef.current = false;
     }
   };
+
+  const saveHandlerRef = useRef(handleSaveChanges);
+  saveHandlerRef.current = handleSaveChanges;
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        if (saveLockRef.current) return;
+        saveHandlerRef.current(undefined, false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   const handleCoverImgUpload = async (event) => {
     const file = event.target.files[0];
@@ -418,48 +471,39 @@ function EditDocumentPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-display flex">
       <main className="flex-1 h-full flex flex-col">
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 sm:p-4 flex justify-between items-center gap-4 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 sm:p-4 sticky top-0 z-10">
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => navigate("/dashboard")}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
               title="Back to Dashboard"
             >
               <ArrowLeft className="size-5 text-slate-700 dark:text-slate-300" />
             </button>
 
-            <nav className="flex items-center gap-x-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isGenerating) return;
-                  setActiveTab("editor");
-                }}
-                className={`flex-1 ${activeTab === "editor"
-                  ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                  } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
-              >
-                <Edit className="size-4" />
-                <span>Editor</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("details")}
-                className={`flex-1 ${activeTab === "details"
-                  ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                  } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
-              >
-                <NotebookText className="size-4" />
-                <span>Details</span>
-              </button>
-            </nav>
+            <input
+              type="text"
+              name="title"
+              value={document.title || ""}
+              onChange={handleEditDocument}
+              onBlur={() => {
+                if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+              }}
+              placeholder="Untitled Document"
+              aria-label="Document title"
+              className="flex-1 min-w-0 bg-transparent text-slate-900 dark:text-slate-50 text-base sm:text-lg font-semibold truncate px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+            />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
@@ -511,6 +555,36 @@ function EditDocumentPage() {
               Save
             </Button>
           </div>
+        </div>
+
+          <nav className="flex items-center gap-x-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mt-3 w-fit">
+            <button
+              type="button"
+              onClick={() => {
+                if (isGenerating) return;
+                setActiveTab("editor");
+              }}
+              className={`${activeTab === "editor"
+                ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
+            >
+              <Edit className="size-4" />
+              <span>Editor</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("details")}
+              className={`${activeTab === "details"
+                ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
+            >
+              <NotebookText className="size-4" />
+              <span>Details</span>
+            </button>
+          </nav>
         </header>
 
         <section className="w-full flex-1 overflow-hidden">
@@ -584,32 +658,36 @@ function EditDocumentPage() {
           }}
         />
       </main>
-      {saveStatus !== "saved" && (
-        <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg dark:shadow-black/30 rounded-full px-4 py-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-            <div
-              className={`size-2 rounded-full ${saveStatus === "saved"
-                ? "bg-green-500"
-                : saveStatus === "saving"
-                  ? "bg-amber-500 animate-pulse"
-                  : saveStatus === "dirty"
-                    ? "bg-slate-400"
-                    : "bg-red-500"
-                }`}
-            />
+      <LeaveConfirmModal
+        isOpen={blocker.state === "blocked"}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
+      <div className="fixed bottom-6 right-6 z-50 pointer-events-none animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg dark:shadow-black/30 rounded-full px-4 py-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+          <div
+            className={`size-2 rounded-full transition-colors ${saveStatus === "saved"
+              ? "bg-green-500"
+              : saveStatus === "saving"
+                ? "bg-amber-500 animate-pulse"
+                : saveStatus === "dirty"
+                  ? "bg-slate-400"
+                  : "bg-red-500"
+              }`}
+          />
 
-            <span>
+          <span>
+            {
               {
-                {
-                  saved: "All changes saved",
-                  saving: "Saving...",
-                  dirty: "Unsaved changes",
-                  error: "Save failed",
-                }[saveStatus]
-              }
-            </span>
-          </div>
-        </div>)}
+                saved: "All changes saved",
+                saving: "Saving...",
+                dirty: "Unsaved changes",
+                error: "Save failed",
+              }[saveStatus]
+            }
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

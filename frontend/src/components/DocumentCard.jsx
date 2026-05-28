@@ -1,17 +1,21 @@
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from "../utils/api-endpoints";
-import { Edit, Trash2, FileText } from "lucide-react";
+import { Edit, Trash2, FileText, MoreVertical, PencilLine } from "lucide-react";
+import Dropdown, { DropdownItem } from "./ui/Dropdown";
+import { relativeTime } from "../utils/relativeTime";
 
-function DocumentCard({ document, onDelete }) {
+function DocumentCard({ document, onDelete, onRename }) {
   const navigate = useNavigate();
 
   if (!document?._id) return null;
 
-  const { _id, title, subtitle, coverImage } = document;
+  const { _id, title, subtitle, coverImage, updatedAt, wordCount } = document;
 
   const coverImageUrl = coverImage
     ? `${API_BASE_URL}${coverImage}`.replace(/\\/g, "/")
     : null;
+
+  const stopProp = (event) => event.stopPropagation();
 
   return (
     <li
@@ -47,32 +51,54 @@ function DocumentCard({ document, onDelete }) {
           </div>
         )}
 
-        <div className="opacity-0 flex items-center gap-2 absolute top-3 right-3 transition-opacity duration-200 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/documents/${_id}/edit`);
-            }}
-            aria-label="Edit document"
-            title="Edit document"
-            className="size-9 bg-white dark:bg-slate-700 rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+        <div
+          onClick={stopProp}
+          onKeyDown={stopProp}
+          className="opacity-0 absolute top-3 right-3 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+        >
+          <Dropdown
+            contentClassName="w-44"
+            trigger={
+              <button
+                type="button"
+                aria-label="Document actions"
+                title="More actions"
+                className="size-9 bg-white dark:bg-slate-700 rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              >
+                <MoreVertical className="size-4 text-slate-700 dark:text-slate-300" />
+              </button>
+            }
           >
-            <Edit className="size-4 text-slate-700 dark:text-slate-300" />
-          </button>
+            <DropdownItem
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(`/documents/${_id}/edit`);
+              }}
+            >
+              <Edit className="text-slate-500 size-4" />
+              Edit
+            </DropdownItem>
 
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-            aria-label="Delete document"
-            title="Delete document"
-            className="size-9 bg-white dark:bg-slate-700 rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:bg-red-50 dark:hover:bg-red-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-          >
-            <Trash2 className="size-4 text-red-500 dark:text-red-400" />
-          </button>
+            <DropdownItem
+              onClick={(event) => {
+                event.stopPropagation();
+                onRename?.();
+              }}
+            >
+              <PencilLine className="text-slate-500 size-4" />
+              Rename
+            </DropdownItem>
+
+            <DropdownItem
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete?.();
+              }}
+            >
+              <Trash2 className="text-red-500 size-4" />
+              <span className="text-red-600 dark:text-red-400">Delete</span>
+            </DropdownItem>
+          </Dropdown>
         </div>
       </div>
 
@@ -84,6 +110,14 @@ function DocumentCard({ document, onDelete }) {
         <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">
           {subtitle || "Writing project"}
         </p>
+
+        {(updatedAt || wordCount) && (
+          <p className="text-slate-400 dark:text-slate-500 text-xs mt-3 truncate">
+            {updatedAt && <>Edited {relativeTime(updatedAt)}</>}
+            {updatedAt && wordCount > 0 && <span className="mx-1.5">·</span>}
+            {wordCount > 0 && <>~{wordCount.toLocaleString()} words</>}
+          </p>
+        )}
       </section>
 
       <div className="h-1 bg-linear-to-r from-violet-500 to-purple-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

@@ -3,7 +3,10 @@ const DocumentChunk = require("../models/DocumentChunk");
 const path = require("path");
 const fs = require("fs");
 
-const { createChunksForDocument } = require("../utils/documentChunks");
+const {
+  createChunksForDocument,
+  recomputeDocumentWordCount,
+} = require("../utils/documentChunks");
 
 async function getDocuments(req, res) {
   try {
@@ -269,6 +272,8 @@ async function updateDocumentChunk(req, res) {
       });
     }
 
+    await recomputeDocumentWordCount(documentId);
+
     return res.status(200).json({
       chunk,
     });
@@ -424,6 +429,8 @@ async function createDocumentChunk(req, res) {
       content,
     });
 
+    await recomputeDocumentWordCount(documentId);
+
     return res.status(201).json({
       chunk,
     });
@@ -531,6 +538,10 @@ async function batchUpdateChunks(req, res) {
 
       const unversionedResult = await DocumentChunk.bulkWrite(unversionedOps);
       updated += unversionedResult.modifiedCount + unversionedResult.upsertedCount;
+    }
+
+    if (updated > 0) {
+      await recomputeDocumentWordCount(documentId);
     }
 
     return res.status(200).json({ updated });
