@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
@@ -10,9 +10,43 @@ import {
   CreateDocumentModal,
   Dropdown,
   DropdownItem,
+  Input,
   SearchModal,
 } from "../components";
-import { FileText, FilePlus, PencilLine, Search } from "lucide-react";
+import Modal from "../components/ui/Modal";
+import { ArrowUpDown, FileText, FilePlus, PencilLine, Search } from "lucide-react";
+
+const SORT_OPTIONS = [
+  { key: "updatedDesc", label: "Last edited (newest)" },
+  { key: "updatedAsc", label: "Last edited (oldest)" },
+  { key: "createdDesc", label: "Created (newest)" },
+  { key: "createdAsc", label: "Created (oldest)" },
+  { key: "titleAsc", label: "Title A–Z" },
+  { key: "titleDesc", label: "Title Z–A" },
+];
+
+const sortDocuments = (docs, sortBy) => {
+  const copy = [...docs];
+  switch (sortBy) {
+    case "updatedAsc":
+      return copy.sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt));
+    case "createdDesc":
+      return copy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    case "createdAsc":
+      return copy.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    case "titleAsc":
+      return copy.sort((a, b) =>
+        (a.title || "").localeCompare(b.title || "", undefined, { sensitivity: "base" })
+      );
+    case "titleDesc":
+      return copy.sort((a, b) =>
+        (b.title || "").localeCompare(a.title || "", undefined, { sensitivity: "base" })
+      );
+    case "updatedDesc":
+    default:
+      return copy.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+};
 
 const DocumentCardSkeleton = () => (
   <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm animate-pulse">
@@ -100,6 +134,60 @@ const DeleteConfirmationModal = ({
   );
 };
 
+const RenameDocumentModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  initialTitle,
+  isRenaming,
+}) => {
+  const [draft, setDraft] = useState(initialTitle || "");
+
+  const submit = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      toast.error("Title is required.");
+      return;
+    }
+    if (trimmed === (initialTitle || "").trim()) {
+      onClose();
+      return;
+    }
+    onConfirm(trimmed);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={isRenaming ? () => { } : onClose} title="Rename document">
+      <div className="space-y-5">
+        <Input
+          autoFocus
+          type="text"
+          label="Document Title"
+          required
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="My new writing project"
+          disabled={isRenaming}
+        />
+        <div className="flex justify-end items-center gap-x-2 md:gap-x-3">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isRenaming}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={submit} isLoading={isRenaming}>
+            Save
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 function DashboardPage() {
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,9 +195,22 @@ function DashboardPage() {
   const [createMode, setCreateMode] = useState("blank");
   const [documentToDeleteId, setDocumentToDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [documentToRenameId, setDocumentToRenameId] = useState(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [sortBy, setSortBy] = useState("updatedDesc");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const navigate = useNavigate();
+
+  const sortedDocuments = useMemo(
+    () => sortDocuments(documents, sortBy),
+    [documents, sortBy]
+  );
+
+  const documentToRename = useMemo(
+    () => documents.find((doc) => doc?._id === documentToRenameId) || null,
+    [documents, documentToRenameId]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,6 +259,36 @@ function DashboardPage() {
     }
   };
 
+  const handleRenameDocument = async (newTitle) => {
+    if (!documentToRenameId) return;
+
+    setIsRenaming(true);
+
+    try {
+      const { data } = await axiosInstance.put(
+        `${API_ENDPOINTS.DOCUMENTS.UPDATE_CONTENT}/${documentToRenameId}`,
+        { title: newTitle }
+      );
+
+      const updated = data?.document;
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc._id === documentToRenameId
+            ? { ...doc, ...(updated || { title: newTitle }) }
+            : doc
+        )
+      );
+
+      toast.success("Document renamed.");
+      setDocumentToRenameId(null);
+    } catch (error) {
+      console.error("Error renaming document:", error);
+      toast.error(error.response?.data?.error || "Failed to rename document.");
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   const handleCreateDocument = (documentId) => {
     setIsCreateDocumentModalOpen(false);
     navigate(`/documents/${documentId}/edit`);
@@ -177,7 +308,7 @@ function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
@@ -190,6 +321,24 @@ function DashboardPage() {
                 ⌘K
               </kbd>
             </button>
+
+            {documents.length > 1 && (
+              <Dropdown
+                trigger={
+                  <Button type="button" variant="outline" size="sm" icon={ArrowUpDown}>
+                    <span className="hidden sm:inline">
+                      {SORT_OPTIONS.find((o) => o.key === sortBy)?.label || "Sort"}
+                    </span>
+                  </Button>
+                }
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <DropdownItem key={option.key} onClick={() => setSortBy(option.key)}>
+                    {option.label}
+                  </DropdownItem>
+                ))}
+              </Dropdown>
+            )}
 
           <Dropdown
             trigger={
@@ -285,12 +434,15 @@ function DashboardPage() {
           </section>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {documents.map((document) => (
+            {sortedDocuments.map((document) => (
               <DocumentCard
                 key={document._id}
                 document={document}
                 onDelete={() => {
                   setDocumentToDeleteId(document._id);
+                }}
+                onRename={() => {
+                  setDocumentToRenameId(document._id);
                 }}
               />
             ))}
@@ -306,6 +458,15 @@ function DashboardPage() {
             "this document"
             }"?`}
           message="This action is permanent and cannot be undone. All content will be lost."
+        />
+
+        <RenameDocumentModal
+          key={documentToRenameId || "closed"}
+          isOpen={Boolean(documentToRenameId)}
+          onClose={() => !isRenaming && setDocumentToRenameId(null)}
+          onConfirm={handleRenameDocument}
+          initialTitle={documentToRename?.title || ""}
+          isRenaming={isRenaming}
         />
 
         <CreateDocumentModal

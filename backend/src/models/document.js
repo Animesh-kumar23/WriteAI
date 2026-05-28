@@ -27,6 +27,12 @@ const documentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    wordCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,
