@@ -75,11 +75,6 @@ coverage/
 tmp/
 
 # ====================================
-# Claude Code (local settings only)
-# ====================================
-.claude/settings.local.json
-
-# ====================================
 # Local notes (never push)
 # ====================================
 frontend/help.txt
