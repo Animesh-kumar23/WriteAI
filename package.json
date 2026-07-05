@@ -1,5 +1,5 @@
 {
-  "name": "imprintly",
+  "name": "writeai",
   "version": "1.0.0",
   "description": "AI-powered edocument creation platform",
   "main": "index.js",
@@ -13,7 +13,7 @@
     "publishing",
     "mern"
   ],
-  "author": "Dhrubajyoti Bhattacharjee",
+  "author": "Animesh Kumar",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.22.0",
   "engines": {

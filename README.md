@@ -27,7 +27,7 @@ I wanted to move beyond tutorial CRUD apps and build something that forced me to
 ```
 ┌──────────────────────────────────────────┐
 │           Browser (React 19)            │
-│  CodeMirror 6 editor · SSE AI streaming │
+│  CodeMirror 6 editor · streamed AI responses │
 └───────────────────┬──────────────────────┘
                     │ REST / SSE
          ┌──────────▼──────────┐
@@ -68,7 +68,7 @@ Documents are stored as ordered `DocumentChunk` records in MongoDB. The editor t
 
 ### 🤖 AI Writing (Gemini 2.5 Flash)
 - 8 actions: Generate Draft, Continue, Rewrite, Expand, Shorten, Fix Grammar, Simplify, Custom Prompt
-- Streams tokens to the editor in real time via SSE
+- Streams tokens to the editor in real time via chunked HTTP transfer
 - Configurable style, tone, audience, format, and length
 - Per-document lock prevents duplicate AI requests across tabs
 
@@ -121,7 +121,7 @@ Submitting the same AI request twice wastes API quota and creates race condition
 |---|---|
 | Path traversal | `coverImage` and `avatar` are only writable via dedicated multer upload endpoints — never via JSON body |
 | Prompt injection | All AI config fields are sanitized (HTML stripped, length-capped) before insertion into Gemini prompts |
-| CSRF | `httpOnly` JWT cookie + strict single-origin CORS |
+| CSRF | CORS origin whitelist + JSON-only request bodies (form-based attacks can't replicate `application/json`); `httpOnly` cookie prevents XSS token theft |
 | XSS | `rehype-sanitize` in markdown preview; `escapeHtml` runs before all renderer substitutions |
 | Zip bomb on import | `adm-zip` checks uncompressed entry sizes before parsing — oversized archives are rejected |
 | NoSQL injection | All Mongoose queries use typed parameters; malformed ObjectIds return 400 before hitting the DB |

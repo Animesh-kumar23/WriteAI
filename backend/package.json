@@ -9,7 +9,7 @@
     "dev": "node --env-file=.env --watch ./src/server.js"
   },
   "keywords": [],
-  "author": "Dhrubajyoti Bhattacharjee",
+  "author": "Animesh Kumar",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
