@@ -9,7 +9,7 @@
   "lang": "en",
   "icons": [
     {
-      "src": "/writeai-favicon.png",
+      "src": "/writeai-favicon-192.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"

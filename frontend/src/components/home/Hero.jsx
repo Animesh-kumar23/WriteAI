@@ -19,15 +19,27 @@ function Hero() {
               <div className="bg-linear-to-r from-violet-600 to-purple-600 opacity-20 blur-2xl rounded-3xl absolute -inset-4" />
 
               <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden relative">
-                <img
-                  src="/images/hero-image.png"
-                  alt="WriteAI document editor interface showing the AI-powered writing workspace"
-                  className="w-full h-auto select-none"
-                  width={1280}
-                  height={800}
-                  fetchpriority="high"
-                  loading="eager"
-                />
+                <picture>
+                  <source
+                    type="image/webp"
+                    srcSet="/images/hero-image-400w.webp 400w, /images/hero-image.webp 1280w"
+                    sizes="(max-width: 768px) 400px, 1280px"
+                  />
+                  <source
+                    type="image/png"
+                    srcSet="/images/hero-image-400w.png 400w, /images/hero-image.png 1280w"
+                    sizes="(max-width: 768px) 400px, 1280px"
+                  />
+                  <img
+                    src="/images/hero-image.png"
+                    alt="WriteAI document editor interface showing the AI-powered writing workspace"
+                    className="w-full h-auto select-none"
+                    width={1280}
+                    height={800}
+                    fetchpriority="high"
+                    loading="eager"
+                  />
+                </picture>
               </div>
 
               <div className="hidden lg:block size-20 bg-violet-400/20 dark:bg-violet-400/10 rounded-2xl absolute -left-8 -top-8 rotate-12" />
