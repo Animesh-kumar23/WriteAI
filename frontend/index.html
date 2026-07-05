@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ── Primary SEO ────────────────────────────────────────────── -->
+    <!-- Primary SEO -->
     <title>WriteAI — AI Writing Assistant for Long-Form Documents</title>
 
     <meta
@@ -14,7 +14,7 @@
 
     <meta
       name="keywords"
-      content="AI writing assistant, AI document editor, write with AI, AI content generator, PDF export, DOCX export, Gemini AI writing, long-form writing tool"
+      content="AI writing assistant, AI document editor, write with AI, AI content generator, PDF export, DOCX export, Gemini AI writing, long-form writing tool, markdown editor, document collaboration"
     />
 
     <meta name="author" content="Animesh Kumar" />
@@ -22,13 +22,9 @@
     <meta name="theme-color" content="#7c3aed" />
     <meta name="application-name" content="WriteAI" />
 
-    <!--
-      canonical: replace with your live URL once deployed
-      e.g. https://writeai.vercel.app/
-    -->
-    <link rel="canonical" href="https://writeai.vercel.app/" />
+    <link rel="canonical" href="https://writeai-teal.vercel.app/" />
 
-    <!-- ── Open Graph (Facebook / LinkedIn / Slack previews) ──────── -->
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="WriteAI" />
     <meta
@@ -39,18 +35,15 @@
       property="og:description"
       content="Draft, edit, rewrite, and export professional documents with AI. Streaming generation, chunk-based autosave, PDF/DOCX export."
     />
-    <!--
-      Replace with absolute URL: https://writeai.vercel.app/images/hero-image.png
-      OG images must be absolute URLs to work on social platforms.
-    -->
-    <meta property="og:image" content="https://writeai.vercel.app/images/hero-image.png" />
+    <meta property="og:image" content="https://writeai-teal.vercel.app/images/hero-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:alt" content="WriteAI document editor interface" />
-    <meta property="og:url" content="https://writeai.vercel.app/" />
+    <meta property="og:url" content="https://writeai-teal.vercel.app/" />
     <meta property="og:locale" content="en_US" />
 
-    <!-- ── Twitter / X Card ───────────────────────────────────────── -->
+    <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
@@ -60,27 +53,25 @@
       name="twitter:description"
       content="Draft, edit, rewrite, and export professional documents with AI."
     />
-    <meta name="twitter:image" content="https://writeai.vercel.app/images/hero-image.png" />
+    <meta name="twitter:image" content="https://writeai-teal.vercel.app/images/hero-image.png" />
     <meta name="twitter:image:alt" content="WriteAI document editor interface" />
     <meta name="twitter:creator" content="@Animesh_kumar23" />
 
-    <!-- ── Structured Data (JSON-LD) ─────────────────────────────── -->
-    <!--
-      Tells Google this is a web application, which can appear in
-      "rich results" and improves how the search snippet looks.
-    -->
+    <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "WriteAI",
-        "url": "https://writeai.vercel.app/",
+        "url": "https://writeai-teal.vercel.app/",
         "description": "AI-powered writing assistant for drafting, editing, and exporting professional long-form documents as PDF or DOCX.",
         "applicationCategory": "ProductivityApplication",
+        "applicationSubCategory": "Writing",
         "operatingSystem": "Web",
         "browserRequirements": "Requires JavaScript",
         "inLanguage": "en",
         "isAccessibleForFree": true,
+        "screenshot": "https://writeai-teal.vercel.app/images/hero-image.png",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -89,24 +80,32 @@
         "author": {
           "@type": "Person",
           "name": "Animesh Kumar",
-          "url": "https://github.com/Animesh-kumar23"
+          "url": "https://github.com/Animesh-kumar23",
+          "sameAs": [
+            "https://github.com/Animesh-kumar23",
+            "https://www.linkedin.com/in/animesh-kumar-78620217b/"
+          ]
         },
         "featureList": [
-          "AI content generation with Google Gemini",
-          "Streaming AI text output",
-          "PDF export",
-          "DOCX export",
-          "Markdown editor",
-          "Document import (PDF and DOCX)"
+          "AI content generation powered by Google Gemini 2.5 Flash",
+          "Real-time streaming AI text output",
+          "8 AI writing actions: Generate Draft, Continue, Rewrite, Expand, Shorten, Fix Grammar, Simplify, Custom Prompt",
+          "PDF export via background job queue",
+          "DOCX export via background job queue",
+          "Markdown editor with live split preview",
+          "Chunk-based autosave — only changed sections are written",
+          "Document import from PDF and DOCX",
+          "Full-text search across all documents and content",
+          "Per-chunk version conflict detection and resolution"
         ]
       }
     </script>
 
-    <!-- ── Performance hints ──────────────────────────────────────── -->
-    <!--
-      Preload the hero image so the browser fetches it as early as
-      possible — this directly improves the Lighthouse LCP score.
-    -->
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+
     <link
       rel="preload"
       as="image"
@@ -114,18 +113,10 @@
       fetchpriority="high"
     />
 
-    <!-- Tell the browser to do DNS lookups early for external origins -->
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
-
-    <!-- ── Web App Manifest ───────────────────────────────────────── -->
-    <!--
-      Required for Lighthouse "Installable as PWA" check and better
-      mobile browser behavior (add-to-homescreen, splash screen, etc.)
-    -->
+    <!-- Web App Manifest -->
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- ── App Icons ─────────────────────────────────────────────── -->
+    <!-- App Icons -->
     <link rel="shortcut icon" href="/writeai-favicon.png?v=3" />
     <link rel="icon" href="/writeai-favicon.png?v=3" />
     <link rel="apple-touch-icon" href="/writeai-favicon.png?v=3" />
@@ -134,7 +125,7 @@
   <body>
     <!--
       Inline theme script: runs synchronously before React mounts so
-      there is no flash of wrong theme (FOUT) on page load.
+      there is no flash of wrong theme on page load.
     -->
     <script>
       (function () {

@@ -18,4 +18,4 @@ Disallow: /register
 Disallow: /api/
 
 # Sitemap location
-Sitemap: https://writeai.onrender.com/sitemap.xml
+Sitemap: https://writeai-teal.vercel.app/sitemap.xml
