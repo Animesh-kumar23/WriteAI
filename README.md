@@ -29,7 +29,7 @@ I wanted to move beyond tutorial CRUD apps and build something that forced me to
 │           Browser (React 19)            │
 │  CodeMirror 6 editor · streamed AI responses │
 └───────────────────┬──────────────────────┘
-                    │ REST / SSE
+                    │ REST / HTTP streaming
          ┌──────────▼──────────┐
          │    Express 5 API    │
          │  JWT · Helmet · CORS│
