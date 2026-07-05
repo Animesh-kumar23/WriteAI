@@ -1,6 +1,6 @@
 const LogoIcon = ({ size = 24, className = "", ...props }) => (
   <img
-    src="/writeai-favicon.png"
+    src="/writeai-favicon-192.png"
     alt="WriteAI"
     style={{
       width: size,
