@@ -509,7 +509,11 @@ async function batchUpdateChunks(req, res) {
         // After the bulkWrite, matched chunks have version === clientVersion + 1
         serverChunks.forEach((sc) => {
           const sent = versionedChunks.find((c) => c.order === sc.order);
-          if (sent && sc.version === sent.clientVersion + 1) {
+          if (
+            sent &&
+            sc.version === sent.clientVersion + 1 &&
+            sc.content === sent.content
+          ) {
             savedOrders.add(sc.order);
           }
         });

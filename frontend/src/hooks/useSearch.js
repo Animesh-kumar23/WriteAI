@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
 
@@ -8,7 +8,7 @@ export default function useSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef(null);
 
-  const search = (q) => {
+  const search = useCallback((q) => {
     setQuery(q);
     clearTimeout(debounceRef.current);
 
@@ -30,14 +30,14 @@ export default function useSearch() {
         setIsSearching(false);
       }
     }, 300);
-  };
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     clearTimeout(debounceRef.current);
     setQuery("");
     setResults([]);
     setIsSearching(false);
-  };
+  }, []);
 
   return { query, results, isSearching, search, clearSearch };
 }

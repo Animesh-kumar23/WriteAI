@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
@@ -10,13 +10,14 @@ export default function useDocumentChunks(documentId, chunkLimit = 4) {
 
   const sentinelRef = useRef(null);
   const isFetchingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
 
-  const loadChunks = async (start = 0) => {
+  const loadChunks = useCallback(async (start = 0) => {
     if (isFetchingMoreRef.current) {
       return;
     }
 
-    if (!hasMore && start !== 0) {
+    if (!hasMoreRef.current && start !== 0) {
       return;
     }
 
@@ -46,6 +47,7 @@ export default function useDocumentChunks(documentId, chunkLimit = 4) {
         ]);
       }
 
+      hasMoreRef.current = data.hasMore;
       setHasMore(data.hasMore);
     } catch (error) {
       console.error("Error loading chunks:", error);
@@ -54,7 +56,7 @@ export default function useDocumentChunks(documentId, chunkLimit = 4) {
       setLoadingMore(false);
       isFetchingMoreRef.current = false;
     }
-  };
+  }, [chunkLimit, documentId]);
 
   useEffect(() => {
     if (!documentId) {
@@ -62,10 +64,11 @@ export default function useDocumentChunks(documentId, chunkLimit = 4) {
     }
 
     setChunks([]);
+    hasMoreRef.current = true;
     setHasMore(true);
 
     loadChunks(0);
-  }, [documentId]);
+  }, [documentId, loadChunks]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -94,7 +97,7 @@ export default function useDocumentChunks(documentId, chunkLimit = 4) {
     observer.observe(sentinel);
 
     return () => observer.disconnect();
-  }, [hasMore, chunks.length, documentId]);
+  }, [hasMore, chunks.length, documentId, loadChunks]);
 
   return {
     chunks,

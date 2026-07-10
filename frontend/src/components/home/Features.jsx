@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { FEATURES } from "../../utils/constants";
 import { Link } from "react-router";
@@ -34,7 +35,7 @@ function Features() {
 
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
           {FEATURES.map(
-            ({ title, icon: Icon, description, bgGradientColors, shadowColor }) => (
+            ({ title, icon, description, bgGradientColors, shadowColor }) => (
               <li
                 key={title}
                 className="group relative bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-6 sm:p-7 transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 dark:hover:border-violet-600 hover:shadow-xl hover:shadow-violet-500/10 dark:hover:shadow-violet-500/5"
@@ -45,7 +46,7 @@ function Features() {
                   <div
                     className={`size-14 rounded-xl bg-linear-to-br ${bgGradientColors} shadow-lg ${shadowColor} flex items-center justify-center transition-transform duration-300 group-hover:scale-105`}
                   >
-                    <Icon className="size-7 text-white" />
+                    {createElement(icon, { className: "size-7 text-white" })}
                   </div>
 
                   <div>

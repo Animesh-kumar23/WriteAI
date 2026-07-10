@@ -14,11 +14,15 @@ if (redisClient) {
 const bullmqConnection = ENV.REDIS_URL
   ? (() => {
       const url = new URL(ENV.REDIS_URL);
+      const database = url.pathname.length > 1
+        ? parseInt(url.pathname.slice(1), 10)
+        : undefined;
       return {
         host: url.hostname,
         port: parseInt(url.port, 10),
         username: url.username || undefined,
         password: url.password ? decodeURIComponent(url.password) : undefined,
+        db: Number.isInteger(database) ? database : undefined,
         tls: url.protocol === "rediss:" ? {} : undefined,
       };
     })()

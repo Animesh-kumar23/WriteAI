@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "build": "cd backend && pnpm install && cd ../frontend && pnpm install && pnpm run build",
-    "start": "cd backend && pnpm start"
+    "start": "cd backend && pnpm start",
+    "test": "pnpm --dir backend test && pnpm --dir frontend test",
+    "test:backend": "pnpm --dir backend test",
+    "test:frontend": "pnpm --dir frontend test"
   },
   "keywords": [
     "edocument",
