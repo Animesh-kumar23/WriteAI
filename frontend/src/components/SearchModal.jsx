@@ -25,7 +25,7 @@ function SearchModal({ isOpen, onClose, onNavigate }) {
     } else {
       clearSearch();
     }
-  }, [isOpen]);
+  }, [isOpen, clearSearch]);
 
   useEffect(() => {
     const handleKey = (e) => {

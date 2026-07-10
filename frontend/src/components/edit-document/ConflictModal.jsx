@@ -1,6 +1,6 @@
 import Modal from "../ui/Modal";
 
-function ConflictModal({ isOpen, conflictedOrders, serverChunks, onKeepMine, onUseServer }) {
+function ConflictModal({ isOpen, conflictedOrders, onKeepMine, onUseServer }) {
   return (
     <Modal isOpen={isOpen} onClose={onKeepMine} title="Edit Conflict Detected">
       <p className="text-gray-600 dark:text-slate-400 mb-5">

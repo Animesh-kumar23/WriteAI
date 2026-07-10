@@ -24,8 +24,11 @@ export default function Dropdown({
   }, [isOpen]);
 
   useEffect(() => {
-    if (disabled && isOpen) setIsOpen(false);
-  }, [disabled, isOpen]);
+    if (!disabled) return undefined;
+
+    const frame = requestAnimationFrame(() => setIsOpen(false));
+    return () => cancelAnimationFrame(frame);
+  }, [disabled]);
 
   const toggleDropdown = () => {
     if (disabled) return;

@@ -3,6 +3,7 @@
 > AI-powered document editor built on chunk-based storage, streaming generation, and async export jobs.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-writeai--teal.vercel.app-7c3aed?style=flat-square&logo=vercel&logoColor=white)](https://writeai-teal.vercel.app)
+[![CI](https://github.com/Animesh-kumar23/WriteAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Animesh-kumar23/WriteAI/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com)
@@ -205,6 +206,24 @@ pnpm dev
 |---|---|---|
 | `VITE_API_BASE_URL` | ✅ | Backend URL (e.g. `http://localhost:3000`) |
 | `VITE_SHOW_CONTACT_INFO` | No | `true` to show real contact details in footer |
+
+---
+
+## Testing
+
+WriteAI includes 14 focused frontend and backend automated tests covering document authorization, chunk-level optimistic-concurrency conflicts, Redis-based AI locks and quotas, BullMQ export queueing, autosave race conditions, and streamed AI responses.
+
+The test stack includes Vitest, Supertest, React Testing Library, an isolated MongoDB test database, and an isolated Redis test database. GitHub Actions runs the test suites, frontend linting, and the production build on pushes and pull requests.
+
+```bash
+docker compose up -d mongo redis
+pnpm --dir backend test
+pnpm --dir frontend test
+pnpm --dir backend test:coverage
+pnpm --dir frontend test:coverage
+```
+
+Coverage commands and instructions for adding tests are in **[TESTS.md](TESTS.md)**. Deployment remains handled by the existing hosting integrations.
 
 ---
 
