@@ -108,6 +108,8 @@ The naive approach writes the entire document on every save. For long documents,
 
 Every chunk carries a version counter. When the client saves, it sends the version it last saw for each chunk. The server does a conditional update: if the server version no longer matches, the update fails and a 409 is returned with the conflicted chunk data. The editor shows a modal — "Keep Mine" forces an overwrite, "Use Server" resets the editor to the server state. Conflicts are resolved at the chunk level, not the full document.
 
+While writing an integration test for stale chunk versions, the suite exposed an incorrect conflict-classification path: a chunk exactly one version ahead could be mistaken for a successful update. I fixed the classifier, added regression coverage that verifies the server returns 409 without overwriting its content, and introduced CI so the same concurrency behavior is validated on every pull request.
+
 ### Background export jobs
 
 PDF and DOCX generation is slow — parsing markdown, rendering fonts, embedding images. Running that on the request thread would block the API. I moved it into a BullMQ worker: the client gets a job ID immediately, then polls for status. When the worker finishes, it stores the result in Redis with a short TTL. The client fetches it for download. Jobs retry with exponential backoff on failure.
