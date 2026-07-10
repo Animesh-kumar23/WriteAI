@@ -14,6 +14,7 @@ module.exports = defineConfig({
       GEMINI_API_KEY: "writeai-test-key-no-api-calls",
       CLIENT_URL: "http://localhost:5173",
       AI_DAILY_LIMIT: "1",
+      RAG_ENABLED: "false",
     },
     coverage: {
       provider: "v8",

@@ -23,7 +23,7 @@ The backend suite imports `src/app.js`, so it does not start `app.listen()`, sta
 
 Safety guards stop the suite if either database is not test-only. Redis cleanup uses `FLUSHDB` only after confirming database 15; it never uses `FLUSHALL` or clears development database 0.
 
-The Gemini key is a dummy test value. AI requests under test are rejected by the real quota or lock logic before the Gemini client is called. The export test uses the real test queue, verifies the queued job data, removes the job, and closes the queue connection without starting a worker.
+The Gemini key is a dummy test value, and the real API is never called. Most AI requests under test are rejected by the real quota or lock logic before the Gemini client would be reached at all. The RAG tests go further: they `vi.spyOn` the shared `ai.models` client (`backend/src/configs/genai.js`) and supply mock implementations, so retrieval and generation logic run for real against a fake model response — still without a network call. The export test uses the real test queue, verifies the queued job data, removes the job, and closes the queue connection without starting a worker.
 
 ## Frontend tests
 
