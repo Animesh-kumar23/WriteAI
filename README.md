@@ -72,6 +72,7 @@ Documents are stored as ordered `DocumentChunk` records in MongoDB. The editor t
 - Streams tokens to the editor in real time via chunked HTTP transfer
 - Configurable style, tone, audience, format, and length
 - Per-document lock prevents duplicate AI requests across tabs
+- Retrieval-augmented context for Continue/Custom Prompt — the most relevant earlier chunks (by embedding similarity, not position) are pulled into the prompt alongside the recent text (opt-in via `RAG_ENABLED`)
 
 ### 🏗️ Infrastructure
 - Chunk-based document storage with lazy loading in read view
@@ -118,6 +119,16 @@ PDF and DOCX generation is slow — parsing markdown, rendering fonts, embedding
 
 Submitting the same AI request twice wastes API quota and creates race conditions in the editor. Before each Gemini call, the server acquires a Redis lock scoped to user + document. If the lock already exists, the request is rejected with 409. The lock expires automatically if the stream crashes, so it never gets permanently stuck. Users can still run AI generation on two different documents simultaneously.
 
+While extending this lock to also cover retrieval work (below), I found a real bug in it: the original implementation stored a plain `"1"` and released the lock with an unconditional `DEL`. If a request ran long enough for its TTL to expire while a second request legitimately acquired the same key, the first request's cleanup would delete the second request's active lock — one request releasing a lock it doesn't own. I fixed this by giving each acquisition a unique token and releasing only via an atomic Redis Lua script that compares the token before deleting.
+
+### Context-aware generation (RAG)
+
+"Continue" and "Custom Prompt" only ever saw the last three chunks of a document — a positional heuristic, not a relevance one. For a long document, the part that actually matters (a defined term, an established argument) can easily be outside that window, and the model has no way to see it.
+
+Since documents are already split into `DocumentChunk` records for autosave, those chunks turned out to be a reasonable retrieval unit for free. On a `continue`/`custom` request, the server embeds the candidate chunks (Gemini's `gemini-embedding-001` — chosen specifically because it returns one embedding per input string in a batch request, which is what the batching here relies on) and ranks them against the current context by cosine similarity, computed directly rather than through a vector database — the candidate pool is small enough that brute-force ranking is the honest, simple option. Candidates are drawn from the 30 most recent saved chunks only; this is a real scope limit, not full-document search, and an older chunk is never a retrieval candidate in v1. The top matches are spliced into the prompt as explicitly-labeled, untrusted reference material, alongside (not instead of) the existing recency-based context. Ownership of the source document is re-verified on the server for every retrieval, independent of any other check, since the document ID driving it is client-supplied. Embeddings are normally reused from a Redis cache keyed by content hash, model, dimensionality, and task type, rather than recomputed on every request — though a cache miss still happens if Redis is unavailable, an entry expires, or the model changes, so "normally cached" is the accurate claim, not "never recomputed." If retrieval or embedding fails for any reason, the request falls back to ordinary generation without retrieved context rather than failing the whole request.
+
+The feature ships disabled by default (`RAG_ENABLED=false`) and is enabled per-environment after manual verification, rather than turning itself on the moment the code deploys.
+
 ### Security
 
 | Threat | Mitigation |
@@ -152,7 +163,7 @@ The biggest lessons:
 | Database | MongoDB (Atlas in prod) |
 | Queue | BullMQ |
 | Cache / Locks | Redis (Redis Cloud in prod) |
-| AI | Google Gemini 2.5 Flash |
+| AI | Google Gemini 2.5 Flash (generation), `gemini-embedding-001` (retrieval) |
 | Export | PDFKit, docx |
 | Import | Mammoth, pdf-parse |
 | Auth | JWT, bcryptjs |
@@ -201,6 +212,8 @@ pnpm dev
 | `REDIS_URL` | No | Enables rate limiting, locks, and export cache |
 | `AI_DAILY_LIMIT` | No | Max AI calls per user per day (default: 100) |
 | `ATLAS_SEARCH_ENABLED` | No | `true` to use fuzzy Atlas Search in prod |
+| `RAG_ENABLED` | No | `true` to enable retrieval-augmented context for Continue/Custom Prompt (default: off) |
+| `EMBEDDING_MODEL` | No | Gemini embedding model for retrieval (default: `gemini-embedding-001`) |
 
 **`frontend/.env`**
 
@@ -213,7 +226,7 @@ pnpm dev
 
 ## Testing
 
-WriteAI includes 14 focused frontend and backend automated tests covering document authorization, chunk-level optimistic-concurrency conflicts, Redis-based AI locks and quotas, BullMQ export queueing, autosave race conditions, and streamed AI responses.
+WriteAI includes 33 focused frontend and backend automated tests covering document authorization, chunk-level optimistic-concurrency conflicts, Redis-based AI locks and quotas, BullMQ export queueing, autosave race conditions, streamed AI responses, and RAG retrieval (ownership checks, cache and embedding-budget behavior, malformed-vector handling, and the token-based AI lock).
 
 The test stack includes Vitest, Supertest, React Testing Library, an isolated MongoDB test database, and an isolated Redis test database. GitHub Actions runs the test suites, frontend linting, and the production build on pushes and pull requests.
 
@@ -247,14 +260,15 @@ The backend is API-only (no static file serving). CORS allows both Vercel origin
 ```
 writeai/
 ├── backend/src/
-│   ├── configs/       # db, redis, env
+│   ├── configs/       # db, redis, env, genai
 │   ├── controllers/   # auth, documents, ai, exports, import, search, profile
 │   ├── middlewares/   # auth, upload, rateLimit, aiQuota
 │   ├── models/        # User, Document, DocumentChunk
 │   ├── queues/        # export.queue.js (BullMQ)
+│   ├── services/      # retrieval.js (RAG)
 │   ├── workers/       # export.worker.js
 │   ├── routes/
-│   └── utils/         # pdf.generator, docx.generator, import.parser, documentChunks
+│   └── utils/         # pdf.generator, docx.generator, import.parser, documentChunks, aiLock
 │
 └── frontend/src/
     ├── components/    # edit-document, document-view, home, ui
