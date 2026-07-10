@@ -92,7 +92,7 @@ function EditDocumentPage() {
     setIsStreaming,
     flushSave,
     keepMyVersion,
-    useServerVersion,
+    useServerVersion: acceptServerVersion,
   } = useDocumentEditor(
     documentId,
     () => setSaveStatus("saved"),
@@ -639,20 +639,19 @@ function EditDocumentPage() {
         <ConflictModal
           isOpen={conflictData !== null}
           conflictedOrders={conflictData?.map((c) => c.order)}
-          serverChunks={conflictData}
           onKeepMine={() => {
             keepMyVersion((conflictData ?? []).map((c) => c.order));
             setConflictData(null);
           }}
           onUseServer={() => {
-            useServerVersion(conflictData ?? []);
+            acceptServerVersion(conflictData ?? []);
             setConflictData(null);
           }}
         />
         <SearchModal
           isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
-          onNavigate={(docId, _chunkOrder) => {
+          onNavigate={(docId) => {
             if (docId) navigate(`/documents/${docId}/edit`);
             else setIsSearchOpen(true);
           }}

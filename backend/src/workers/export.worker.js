@@ -4,6 +4,7 @@ const { generatePdfBuffer } = require("../utils/pdf.generator");
 const { generateDocx } = require("../utils/docx.generator");
 const { getFullDocumentContent } = require("../utils/documentChunks");
 const Document = require("../models/document");
+const { EXPORT_QUEUE_NAME, EXPORT_QUEUE_PREFIX } = require("../queues/export.queue");
 
 const RESULT_TTL_SECONDS = 30 * 60; // 30 minutes — long enough for users who walk away mid-export
 
@@ -11,7 +12,7 @@ function createExportWorker() {
   if (!bullmqConnection) return null;
 
   const worker = new Worker(
-    "exports",
+    EXPORT_QUEUE_NAME,
     async (job) => {
       const { documentId, format } = job.data;
 
@@ -56,7 +57,7 @@ function createExportWorker() {
 
       return { filename, contentType };
     },
-    { connection: bullmqConnection }
+    { connection: bullmqConnection, prefix: EXPORT_QUEUE_PREFIX }
   );
 
   worker.on("failed", (job, err) => {
