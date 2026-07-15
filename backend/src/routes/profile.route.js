@@ -6,12 +6,21 @@ const {
   deleteAvatar,
 } = require("../controllers/profile.controller");
 const { authenticate } = require("../middlewares/auth.middleware");
-const { uploadAvatarImage } = require("../middlewares/upload.middleware");
+const {
+  uploadAvatarImage,
+  verifyImageSignature,
+} = require("../middlewares/upload.middleware");
 
 router.get("/", authenticate, getProfile);
 router.put("/", authenticate, updateProfile);
 
-router.put("/avatar", authenticate, uploadAvatarImage, updateAvatar);
+router.put(
+  "/avatar",
+  authenticate,
+  uploadAvatarImage,
+  verifyImageSignature,
+  updateAvatar
+);
 router.delete("/avatar", authenticate, deleteAvatar);
 
 module.exports = router;

@@ -15,7 +15,11 @@ const {
 } = require("../controllers/documents.controller");
 const { searchDocuments } = require("../controllers/search.controller");
 const { importDocument } = require("../controllers/import.controller");
-const { uploadDocumentCoverImage, uploadDocumentImport } = require("../middlewares/upload.middleware");
+const {
+  uploadDocumentCoverImage,
+  uploadDocumentImport,
+  verifyImageSignature,
+} = require("../middlewares/upload.middleware");
 
 router.use(authenticate);
 
@@ -47,6 +51,7 @@ router.patch(
 router.put(
   "/:documentId/cover",
   uploadDocumentCoverImage,
+  verifyImageSignature,
   updateDocumentCover
 );
 
