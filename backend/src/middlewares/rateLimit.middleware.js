@@ -24,6 +24,7 @@ async function initLimiters() {
     max: 300,
     standardHeaders: true,
     legacyHeaders: false,
+    passOnStoreError: true, // Redis down/unreachable — allow the request instead of 500ing
     message: { error: "Too many requests, please try again later." },
     store: makeStore("rl_global:"),
   });
@@ -33,6 +34,7 @@ async function initLimiters() {
     max: 15,
     standardHeaders: true,
     legacyHeaders: false,
+    passOnStoreError: true, // Redis down/unreachable — allow the request instead of 500ing
     message: { error: "Too many auth attempts, try again in 15 minutes." },
     store: makeStore("rl_auth:"),
   });
@@ -42,6 +44,7 @@ async function initLimiters() {
     max: 40,
     standardHeaders: true,
     legacyHeaders: false,
+    passOnStoreError: true, // Redis down/unreachable — allow the request instead of 500ing
     // These limiters run only on authenticated routes, so req.user is always set.
     // The req.ip fallback is a safety net for mis-ordered middleware, not normal
     // traffic — suppress the IPv6 warning since it won't be hit in practice.
@@ -56,6 +59,7 @@ async function initLimiters() {
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
+    passOnStoreError: true, // Redis down/unreachable — allow the request instead of 500ing
     keyGenerator: (req) => req.user?.id ?? req.ip,
     validate: { keyGeneratorIpFallback: false },
     message: { error: "Export limit reached, try again in an hour." },

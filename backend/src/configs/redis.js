@@ -2,7 +2,13 @@ const { createClient } = require("redis");
 const ENV = require("./env");
 
 const redisClient = ENV.REDIS_URL
-  ? createClient({ url: ENV.REDIS_URL })
+  ? createClient({
+      url: ENV.REDIS_URL,
+      // Fail fast instead of queueing commands indefinitely while the socket
+      // is down/reconnecting — callers already catch and fail open, but only
+      // if the command rejects rather than hanging forever.
+      disableOfflineQueue: true,
+    })
   : null;
 
 if (redisClient) {
@@ -28,13 +34,31 @@ const bullmqConnection = ENV.REDIS_URL
     })()
   : null;
 
+const CONNECT_TIMEOUT_MS = 5000;
+
 async function connectToRedis() {
   if (!redisClient) {
     console.warn("REDIS_URL not set — rate limiting will use in-memory store");
     return;
   }
-  await redisClient.connect();
-  console.log("Connected to Redis");
+
+  // redis's default reconnectStrategy retries forever on a refused connection
+  // (it never rejects on its own), so an unreachable Redis at boot would hang
+  // startup indefinitely without this race. The client keeps retrying in the
+  // background either way — it'll pick up automatically once Redis is back.
+  try {
+    await Promise.race([
+      redisClient.connect(),
+      new Promise((_resolve, reject) =>
+        setTimeout(() => reject(new Error("connection timed out")), CONNECT_TIMEOUT_MS)
+      ),
+    ]);
+    console.log("Connected to Redis");
+  } catch (error) {
+    console.warn(
+      `Redis unavailable at startup (${error.message}) — starting without it; Redis-backed features will degrade until it connects`
+    );
+  }
 }
 
 module.exports = { redisClient, bullmqConnection, connectToRedis };
