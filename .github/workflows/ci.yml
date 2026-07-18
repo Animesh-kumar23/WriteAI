@@ -69,3 +69,33 @@ jobs:
 
       - name: Build frontend
         run: pnpm --dir frontend build
+
+  # Continuous Deployment: after tests pass on the aws-deploy branch, SSH into
+  # the EC2 box and rebuild the container. Other branches/PRs run tests only.
+  deploy:
+    name: Deploy to AWS EC2
+    needs: test
+    if: github.ref == 'refs/heads/aws-deploy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -e
+            cd ~/WriteAI
+            git fetch origin aws-deploy
+            git reset --hard origin/aws-deploy
+            docker build -t writeai .
+            docker stop writeai || true
+            docker rm writeai || true
+            docker run -d --name writeai -p 80:3000 \
+              --env-file ~/writeai.env \
+              -v writeai_uploads:/app/backend/uploads \
+              --restart unless-stopped \
+              writeai
+            docker image prune -f
