@@ -17,7 +17,15 @@ const app = express();
 // AWS terminates HTTPS at its load balancer, so Express should trust that proxy.
 app.set("trust proxy", 1);
 
-app.use(helmet());
+// Over plain HTTP (COOKIE_SECURE=false) Helmet's defaults break the page:
+// the CSP's `upgrade-insecure-requests` forces every asset to HTTPS (which
+// isn't there → assets time out → white page) and HSTS pins the browser to
+// HTTPS. Keep full protection when behind TLS; relax just those over HTTP.
+app.use(
+  ENV.COOKIE_SECURE
+    ? helmet()
+    : helmet({ contentSecurityPolicy: false, hsts: false })
+);
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
