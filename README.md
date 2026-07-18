@@ -244,14 +244,18 @@ Coverage commands and instructions for adding tests are in **[TESTS.md](TESTS.md
 
 ## Deployment
 
-The frontend and backend are deployed separately:
+The existing hosted version deploys the frontend and backend separately:
 
 | Service | Platform | URL |
 |---|---|---|
 | React frontend | [Vercel](https://vercel.com) | [writeai-teal.vercel.app](https://writeai-teal.vercel.app) |
 | Express API | [Render](https://render.com) | writeai-1jcj.onrender.com |
 
-The backend is API-only (no static file serving). CORS allows both Vercel origins. A `render.yaml` Blueprint is included in the repo root for one-click Render deploy.
+For a simple AWS deployment, the root `Dockerfile` packages the frontend and
+backend into one container on port 3000. See **[DOCKER.md](DOCKER.md)** for local
+Docker basics and **[DEPLOY.md](DEPLOY.md)** for the single-EC2 free-tier guide.
+
+The `render.yaml` Blueprint is still included for the existing Render deploy.
 
 ---
 

@@ -14,26 +14,45 @@ const { globalLimiter } = require("./middlewares/rateLimit.middleware");
 
 const app = express();
 
+// AWS terminates HTTPS at its load balancer, so Express should trust that proxy.
+app.set("trust proxy", 1);
+
 app.use(helmet());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Used by Docker and AWS to check that the web process is running.
+app.get("/health", (_, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 const allowedOrigins = ENV.CLIENT_URL.split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-app.use(
-  cors({
+app.use((req, res, next) => {
+  const host = (req.get("x-forwarded-host") ?? req.get("host") ?? "")
+    .split(",")[0]
+    .trim();
+  const sameOrigin = `${req.protocol}://${host}`;
+
+  return cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      if (
+        !origin ||
+        origin === sameOrigin ||
+        allowedOrigins.includes(origin)
+      ) {
+        return callback(null, true);
+      }
       return callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+  })(req, res, next);
+});
 app.use(globalLimiter);
 
 app.use("/api/auth", authRouter);
@@ -47,6 +66,24 @@ app.use("/uploads", (req, res, next) => {
   next();
 });
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+// The production Docker image contains the frontend build. Serving it here
+// keeps deployment beginner-friendly: one container, one port, one URL.
+if (ENV.NODE_ENV === "production") {
+  const frontendDist = path.resolve(__dirname, "../../frontend/dist");
+
+  app.use(express.static(frontendDist));
+  app.use((req, res, next) => {
+    const isFrontendRoute =
+      req.method === "GET" &&
+      req.accepts("html") &&
+      !req.path.startsWith("/api/") &&
+      !req.path.startsWith("/uploads/");
+
+    if (!isFrontendRoute) return next();
+    return res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
 
 app.use((err, _, res, next) => {
   if (err instanceof multer.MulterError) {

@@ -26,12 +26,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY frontend/ ./
 
-# Vite bakes VITE_* vars into the JS bundle at build time.
-# Pass your production API URL here when building:
-#   docker build --build-arg VITE_API_BASE_URL=https://your-app.onrender.com .
-ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
 RUN pnpm build
 
 
@@ -39,6 +33,9 @@ RUN pnpm build
 FROM node:20-alpine AS production
 
 WORKDIR /app/backend
+
+ENV NODE_ENV=production
+ENV PORT=3000
 
 RUN corepack enable
 
@@ -50,13 +47,18 @@ RUN pnpm install --frozen-lockfile --prod
 COPY backend/ ./
 
 # Express in production mode serves frontend/dist as static files.
-# server.js resolves the path as __dirname + "/../../frontend/dist"
+# app.js resolves the path as __dirname + "/../../frontend/dist"
 # (__dirname = /app/backend/src  →  /app/frontend/dist)
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 
 # uploads/ holds user avatars and cover images
-RUN mkdir -p /app/backend/uploads
+RUN mkdir -p /app/backend/uploads && chown -R node:node /app
+
+USER node
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 CMD ["node", "./src/server.js"]

@@ -20,3 +20,10 @@ backend/uploads
 # Editor / OS noise
 .DS_Store
 Thumbs.db
+
+# Files that are not needed to run the production image
+docs
+.github
+**/*.test.js
+**/*.test.jsx
+**/coverage

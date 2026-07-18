@@ -2,12 +2,14 @@ const jwt = require("jsonwebtoken");
 const ENV = require("../configs/env");
 const User = require("../models/User");
 
-const isProduction = ENV.NODE_ENV === "production";
+// Secure + SameSite=None requires HTTPS; over plain HTTP the browser drops the
+// cookie and login silently fails, so both are gated on COOKIE_SECURE together.
+const secureCookies = ENV.COOKIE_SECURE;
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? "None" : "Lax",
+  secure: secureCookies,
+  sameSite: secureCookies ? "None" : "Lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: "/",
 };
@@ -93,8 +95,8 @@ async function signInUser(req, res) {
 async function logoutUser(req, res) {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
+    secure: secureCookies,
+    sameSite: secureCookies ? "None" : "Lax",
     path: "/",
   });
   return res.status(200).json({ message: "Logged out successfully!" });

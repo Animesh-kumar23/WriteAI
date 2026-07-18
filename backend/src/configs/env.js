@@ -1,7 +1,15 @@
 require("dotenv").config();
+const nodeEnv = process.env.NODE_ENV ?? "development";
 const ENV = {
-  NODE_ENV: process.env.NODE_ENV ?? "development",
+  NODE_ENV: nodeEnv,
   PORT: process.env.PORT ?? 3000,
+  // Auth cookies are marked Secure (HTTPS-only) in production by default.
+  // Set COOKIE_SECURE=false to allow login over plain HTTP (e.g. a demo box
+  // reached via http://<ip> with no TLS in front of it).
+  COOKIE_SECURE:
+    process.env.COOKIE_SECURE != null
+      ? process.env.COOKIE_SECURE === "true"
+      : nodeEnv === "production",
   DB_URI: process.env.DB_URI ?? "",
   JWT_SECRET_KEY: process.env.JWT_SECRET_KEY ?? "",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? "",
