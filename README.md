@@ -168,7 +168,9 @@ The biggest lessons:
 | Import | Mammoth, pdf-parse |
 | Auth | JWT, bcryptjs |
 | Security | helmet, express-rate-limit, multer |
-| Infra | Vercel (frontend), Render (backend) |
+| Containerization | Docker (multi-stage build, single-container image) |
+| Cloud / Hosting | AWS EC2 (Dockerized deploy), Vercel (frontend), Render (backend) |
+| CI | GitHub Actions (tests, lint, production build on every push/PR) |
 
 ---
 
@@ -251,9 +253,11 @@ The existing hosted version deploys the frontend and backend separately:
 | React frontend | [Vercel](https://vercel.com) | [writeai-teal.vercel.app](https://writeai-teal.vercel.app) |
 | Express API | [Render](https://render.com) | writeai-1jcj.onrender.com |
 
-For a simple AWS deployment, the root `Dockerfile` packages the frontend and
-backend into one container on port 3000. See **[DOCKER.md](DOCKER.md)** for local
-Docker basics and **[DEPLOY.md](DEPLOY.md)** for the single-EC2 free-tier guide.
+The whole app also runs as a **single Docker container** — the root `Dockerfile`
+builds the React frontend and bakes it into the backend image, so one Node
+process serves both the API and the static site on one port. It's deployed this
+way on a **free-tier AWS EC2** instance. See **[DOCKER.md](DOCKER.md)** for local
+Docker basics and **[DEPLOY.md](DEPLOY.md)** for the step-by-step single-EC2 guide.
 
 The `render.yaml` Blueprint is still included for the existing Render deploy.
 
