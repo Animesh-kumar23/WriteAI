@@ -1,4 +1,3 @@
-const app = require("./app");
 const ENV = require("./configs/env");
 const { connectToDB } = require("./configs/db");
 const { connectToRedis } = require("./configs/redis");
@@ -8,6 +7,7 @@ async function startServer() {
   await connectToDB();
   await connectToRedis();
 
+  const app = require("./app");
   createExportWorker();
   console.log("Export worker started");
 
