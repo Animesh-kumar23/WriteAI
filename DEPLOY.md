@@ -46,9 +46,21 @@ You need four values before touching AWS. Collect them in a notepad.
      Replace `USER`/`PASSWORD` with what you set, and add `/writeai` as the db name.
      → this is your **`DB_URI`**
 
+   - In Atlas, open **Search & Vector Search** and create these two Search indexes in
+     the database named by `DB_URI`:
+     - Collection `documents`, index `documents_and_chunks`:
+       `{"mappings":{"dynamic":false,"fields":{"title":{"type":"string","analyzer":"lucene.standard"},"subtitle":{"type":"string","analyzer":"lucene.standard"}}}}`
+     - Collection `documentchunks`, index `chunks_content`:
+       `{"mappings":{"dynamic":false,"fields":{"content":{"type":"string","analyzer":"lucene.standard","store":true}}}}`
+     Search can otherwise return an empty result set without reporting a missing or
+     misplaced index.
+
 2. **Redis Cloud** (you already have this) — grab your connection URL, looks like:
    `redis://default:PASSWORD@some-host.redns.redis-cloud.com:12345`
    → this is your **`REDIS_URL`**
+
+   Redis is required: the API and export worker intentionally do not start when this
+   URL is missing or unreachable.
 
 3. **Gemini API key** (you already have this) → your **`GEMINI_API_KEY`**
 

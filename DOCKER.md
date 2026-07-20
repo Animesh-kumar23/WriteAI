@@ -4,7 +4,7 @@ You only need these ideas:
 
 - An **image** is a packaged copy of WriteAI.
 - A **container** is that image running.
-- `docker compose` starts WriteAI and a local MongoDB together.
+- `docker compose` starts WriteAI, MongoDB, and the required Redis service together.
 - AWS runs the same image, but your production database stays in MongoDB Atlas.
 
 ## Try it locally
@@ -27,8 +27,12 @@ Open <http://localhost:3000>. Stop it with `Ctrl+C`, followed by:
 docker compose down
 ```
 
-Your local MongoDB data and uploaded files survive normal restarts. To delete that
-local Docker data too, run `docker compose down -v`.
+The bundled MongoDB service does not implement Atlas Search. The rest of the local
+stack works normally, but search intentionally fails unless `DB_URI` points to an
+Atlas database with the indexes documented in [README.md](README.md#atlas-search-indexes).
+
+Your local MongoDB, Redis, and uploaded-file data survive normal restarts. To delete
+that local Docker data too, run `docker compose down -v`.
 
 ## Deploy on one free-tier EC2 instance
 

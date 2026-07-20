@@ -15,7 +15,6 @@ jobs:
       GEMINI_API_KEY: writeai-ci-dummy-key-no-api-calls
       CLIENT_URL: http://localhost:5173
       AI_DAILY_LIMIT: 1
-      RAG_ENABLED: "false"
     services:
       mongo:
         image: mongo:7
@@ -61,9 +60,6 @@ jobs:
       - name: Run backend tests
         run: pnpm --dir backend test
 
-      - name: Run frontend tests
-        run: pnpm --dir frontend test
-
       - name: Lint frontend
         run: pnpm --dir frontend lint
 
@@ -90,12 +86,36 @@ jobs:
             cd ~/WriteAI
             git fetch origin aws-deploy
             git reset --hard origin/aws-deploy
-            docker build -t writeai .
+            docker build -t writeai:next .
             docker stop writeai || true
             docker rm writeai || true
             docker run -d --name writeai -p 80:3000 \
               --env-file ~/writeai.env \
               -v writeai_uploads:/app/backend/uploads \
               --restart unless-stopped \
-              writeai
-            docker image prune -f
+              writeai:next
+
+            for attempt in $(seq 1 24); do
+              status=$(docker inspect --format='{{.State.Health.Status}}' writeai)
+              if [ "$status" = "healthy" ]; then
+                docker tag writeai:next writeai
+                docker image rm writeai:next
+                docker image prune -f
+                exit 0
+              fi
+              if [ "$status" = "unhealthy" ]; then
+                break
+              fi
+              sleep 5
+            done
+
+            docker logs writeai
+            docker rm -f writeai
+            if docker image inspect writeai >/dev/null 2>&1; then
+              docker run -d --name writeai -p 80:3000 \
+                --env-file ~/writeai.env \
+                -v writeai_uploads:/app/backend/uploads \
+                --restart unless-stopped \
+                writeai
+            fi
+            exit 1

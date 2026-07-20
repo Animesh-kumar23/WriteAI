@@ -1,295 +1,239 @@
 # WriteAI
 
-> AI-powered document editor built on chunk-based storage, streaming generation, and async export jobs.
+> A focused AI document editor built around chunk-based persistence, optimistic concurrency control, HTTP streaming, retrieval, and queued PDF exports.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-writeai--teal.vercel.app-7c3aed?style=flat-square&logo=vercel&logoColor=white)](https://writeai-teal.vercel.app)
 [![CI](https://github.com/Animesh-kumar23/WriteAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Animesh-kumar23/WriteAI/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com)
-[![Redis](https://img.shields.io/badge/Redis-Cloud-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
+[![Redis](https://img.shields.io/badge/Redis-Required-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Queue-FF4F64?style=flat-square)](https://docs.bullmq.io)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
-**[→ writeai-teal.vercel.app](https://writeai-teal.vercel.app)**
+**Live application:** [writeai-teal.vercel.app](https://writeai-teal.vercel.app)
+
+### Demo account
+
+- Email: `animeshkumar.bgs+demo@gmail.com`
+- Password: `123456aA`
 
 ![WriteAI landing page](docs/screenshots/landing.png)
 
----
+## What it does
 
-## Why I Built This
+WriteAI keeps the product surface intentionally small while retaining the engineering-heavy paths:
 
-I wanted to move beyond tutorial CRUD apps and build something that forced me to solve real engineering problems: large-document performance, concurrent edits, async background work, rate limiting, and AI cost control. What started as a simple save-the-whole-document approach kept breaking as documents grew — so I refactored into a chunk-based architecture, added conflict detection, moved exports off the request thread into a job queue, and built rate limiting that degrades gracefully when Redis is unavailable. This project is where I learned what production-oriented backend engineering actually looks like.
+- Email/password signup and login with bcrypt password hashing and JWT authentication. Protected API routes accept the HTTP-only cookie or a Bearer token.
+- A dashboard for creating, renaming, sorting, opening, and deleting documents, including create-from-scratch AI generation.
+- A dark-only, single-page CodeMirror 6 Markdown editor with edit/split-preview modes, formatting controls, debounced autosave, `Ctrl+S`, save status, and an unsaved-change guard.
+- Three AI actions: Generate Draft, Rewrite Selection, and Custom Prompt.
+- Token-by-token AI streaming over chunked HTTP transfer (`fetch` + ReadableStream reader).
+- PDF-only import and asynchronous PDF export.
+- MongoDB Atlas Search across document titles and chunk content.
+- A read-only account menu showing the signed-in user's name and email.
 
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────┐
-│           Browser (React 19)            │
-│  CodeMirror 6 editor · streamed AI responses │
-└───────────────────┬──────────────────────┘
-                    │ REST / HTTP streaming
-         ┌──────────▼──────────┐
-         │    Express 5 API    │
-         │  JWT · Helmet · CORS│
-         └──┬──────┬──────┬───┘
-            │      │      │
-   ┌────────▼──┐ ┌─▼────┐ ┌▼───────────────┐
-   │  MongoDB  │ │Redis │ │ Gemini 2.5 Flash│
-   │  Chunks   │ │Locks │ │    (AI)         │
-   │  + Search │ │Quota │ └────────────────┘
-   └───────────┘ │Rate  │
-                 └──┬───┘
-             ┌──────▼──────┐
-             │   BullMQ    │
-             │Export Worker│
-             └──────┬──────┘
-                    │ result → Redis (short TTL)
-                    ▼
-             Browser download
-```
-
-Documents are stored as ordered `DocumentChunk` records in MongoDB. The editor tracks which chunks are dirty and sends only those on autosave. Exports run off-thread in a BullMQ worker. Redis handles AI concurrency locks, rate limiting, daily quotas, and temporary export results.
-
----
-
-## Features
-
-### ✍️ Writing Experience
-- CodeMirror 6 markdown editor with live split preview
-- Chunk-based autosave — only changed sections are written to the DB
-- Save states: saved / saving / dirty / error, with a persistent status bubble
-- `Ctrl+S` save shortcut, inline title editing in the header, and a leave-guard (browser close + in-app nav) when there are unsaved changes
-- Import PDF or DOCX — text extracted and replaced into chunks; spinner feedback on the action button
-- Export to styled PDF or DOCX via background queue; export dropdown locks while a job is in flight
-- Full-text search across documents and chunk content
-- Dashboard with client-side sort (last edited / created / title), inline rename via a per-card 3-dot menu, and "Edited Nago · ~N words" metadata cached on every save
-
-### 🤖 AI Writing (Gemini 2.5 Flash)
-- 8 actions: Generate Draft, Continue, Rewrite, Expand, Shorten, Fix Grammar, Simplify, Custom Prompt
-- Streams tokens to the editor in real time via chunked HTTP transfer
-- Configurable style, tone, audience, format, and length
-- Per-document lock prevents duplicate AI requests across tabs
-- Retrieval-augmented context for Continue/Custom Prompt — the most relevant earlier chunks (by embedding similarity, not position) are pulled into the prompt alongside the recent text (opt-in via `RAG_ENABLED`)
-
-### 🏗️ Infrastructure
-- Chunk-based document storage with lazy loading in read view
-- Version-per-chunk conflict detection — 409 on mismatch, resolution modal in UI
-- Background export jobs (BullMQ) — non-blocking, retryable, cached in Redis
-- Multi-tier rate limiting: global, per-user, AI-specific, export-specific
-- Daily AI quota with automatic UTC midnight reset
-- Atlas Search with fuzzy matching (regex fallback in dev)
-- ZIP bomb detection on DOCX import
-- Graceful degradation when Redis is unavailable
-
----
+Both AI endpoints are deliberate. `/api/ai/generate-content` returns a completed result for the create-document flow, while `/api/ai/stream` incrementally updates the in-editor experience.
 
 ## Screenshots
 
-### Dashboard — document library with AI-assisted creation
+### Dashboard
+
 ![Dashboard](docs/screenshots/dashboard.png)
 
-### Editor — markdown editing with streaming AI actions
+### Editor
+
 ![Editor](docs/screenshots/editor.png)
 
-### Search — fuzzy search across document titles and chunk content
+### Search
+
 ![Search](docs/screenshots/search.png)
 
----
+## Architecture
 
-## Engineering Challenges
-
-### Chunk-based document architecture
-
-The naive approach writes the entire document on every save. For long documents, that's wasteful — and it gets worse as documents grow. I split documents into ordered chunks with a `DocumentModel` class on the client that tracks which chunks are dirty. On autosave, only the changed chunks are sent in a single batch request. Clean separation between "what changed" and "what didn't."
-
-### Concurrent edit conflict detection
-
-Every chunk carries a version counter. When the client saves, it sends the version it last saw for each chunk. The server does a conditional update: if the server version no longer matches, the update fails and a 409 is returned with the conflicted chunk data. The editor shows a modal — "Keep Mine" forces an overwrite, "Use Server" resets the editor to the server state. Conflicts are resolved at the chunk level, not the full document.
-
-While writing an integration test for stale chunk versions, the suite exposed an incorrect conflict-classification path: a chunk exactly one version ahead could be mistaken for a successful update. I fixed the classifier, added regression coverage that verifies the server returns 409 without overwriting its content, and introduced CI so the same concurrency behavior is validated on every pull request.
-
-### Background export jobs
-
-PDF and DOCX generation is slow — parsing markdown, rendering fonts, embedding images. Running that on the request thread would block the API. I moved it into a BullMQ worker: the client gets a job ID immediately, then polls for status. When the worker finishes, it stores the result in Redis with a short TTL. The client fetches it for download. Jobs retry with exponential backoff on failure.
-
-### AI concurrency control
-
-Submitting the same AI request twice wastes API quota and creates race conditions in the editor. Before each Gemini call, the server acquires a Redis lock scoped to user + document. If the lock already exists, the request is rejected with 409. The lock expires automatically if the stream crashes, so it never gets permanently stuck. Users can still run AI generation on two different documents simultaneously.
-
-While extending this lock to also cover retrieval work (below), I found a real bug in it: the original implementation stored a plain `"1"` and released the lock with an unconditional `DEL`. If a request ran long enough for its TTL to expire while a second request legitimately acquired the same key, the first request's cleanup would delete the second request's active lock — one request releasing a lock it doesn't own. I fixed this by giving each acquisition a unique token and releasing only via an atomic Redis Lua script that compares the token before deleting.
-
-### Context-aware generation (RAG)
-
-"Continue" and "Custom Prompt" only ever saw the last three chunks of a document — a positional heuristic, not a relevance one. For a long document, the part that actually matters (a defined term, an established argument) can easily be outside that window, and the model has no way to see it.
-
-Since documents are already split into `DocumentChunk` records for autosave, those chunks turned out to be a reasonable retrieval unit for free. On a `continue`/`custom` request, the server embeds the candidate chunks (Gemini's `gemini-embedding-001` — chosen specifically because it returns one embedding per input string in a batch request, which is what the batching here relies on) and ranks them against the current context by cosine similarity, computed directly rather than through a vector database — the candidate pool is small enough that brute-force ranking is the honest, simple option. Candidates are drawn from the 30 most recent saved chunks only; this is a real scope limit, not full-document search, and an older chunk is never a retrieval candidate in v1. The top matches are spliced into the prompt as explicitly-labeled, untrusted reference material, alongside (not instead of) the existing recency-based context. Ownership of the source document is re-verified on the server for every retrieval, independent of any other check, since the document ID driving it is client-supplied. Embeddings are normally reused from a Redis cache keyed by content hash, model, dimensionality, and task type, rather than recomputed on every request — though a cache miss still happens if Redis is unavailable, an entry expires, or the model changes, so "normally cached" is the accurate claim, not "never recomputed." If retrieval or embedding fails for any reason, the request falls back to ordinary generation without retrieved context rather than failing the whole request.
-
-The feature ships disabled by default (`RAG_ENABLED=false`) and is enabled per-environment after manual verification, rather than turning itself on the moment the code deploys.
-
-### Security
-
-| Threat | Mitigation |
+| Layer | Responsibility |
 |---|---|
-| Path traversal | `coverImage` and `avatar` are only writable via dedicated multer upload endpoints — never via JSON body |
-| Prompt injection | All AI config fields are sanitized (HTML stripped, length-capped) before insertion into Gemini prompts |
-| CSRF | CORS origin whitelist + JSON-only request bodies (form-based attacks can't replicate `application/json`); `httpOnly` cookie prevents XSS token theft |
-| XSS | `rehype-sanitize` in markdown preview; `escapeHtml` runs before all renderer substitutions |
-| Zip bomb on import | `adm-zip` checks uncompressed entry sizes before parsing — oversized archives are rejected |
-| NoSQL injection | All Mongoose queries use typed parameters; malformed ObjectIds return 400 before hitting the DB |
+| React 19 + Vite | Dashboard, CodeMirror editor, dirty-chunk tracking, streaming response reader, export polling |
+| Express 5 | REST API, JWT auth, validation, CORS, Helmet, Redis-backed rate limiting |
+| MongoDB + Mongoose | Documents, ordered chunks, compare-and-swap saves, Atlas Search |
+| Redis | Mandatory runtime dependency for rate limits, AI quotas, AI locks, and BullMQ |
+| BullMQ worker | Consumes PDF export jobs and returns generated files through job results |
+| Gemini | `gemini-2.5-flash` generation and `gemini-embedding-001` embeddings |
 
----
+The API connects to MongoDB and Redis before it loads the Express app. A missing Redis connection is therefore a startup failure by design. `server.js` starts the BullMQ worker alongside the API.
 
-## What I Learned
+## Engineering highlights
 
-Building WriteAI taught me how quickly simple architectures break under real usage.
+### Dirty-chunk saves and optimistic concurrency
 
-The biggest lessons:
-- Naive full-document saves don't scale — granular writes matter
-- Background jobs are necessary for any work that takes more than a second
-- Concurrency bugs appear fast when autosave, AI generation, and multiple tabs run simultaneously
-- Rate limiting and cost controls are first-class requirements in AI products, not afterthoughts
+Documents are stored as ordered `DocumentChunk` records. The client-side `DocumentModel` tracks which chunks changed and autosave sends only that dirty set, reducing payload and write volume as documents grow. This dirty tracking is also part of the concurrency design and is intentionally retained.
 
----
+Each persisted chunk carries a version. Batch saves use MongoDB compare-and-swap filters inside `bulkWrite`: edits from stale tabs receive `409`, while changes to different chunks can still merge. PDF import advances versions for existing chunk orders so tabs opened before an import become stale correctly.
 
-## Tech Stack
+The conflict UI uses the browser's native confirmation dialog:
 
-| Layer | Tech |
+- **OK — keep my version:** force-overwrite the conflicted chunk once, increment its server version, reload, and resume ordinary version checks.
+- **Cancel — use the server version:** reload the complete server document.
+
+### Streaming AI and retrieval
+
+Editor generation uses chunked HTTP transfer. The browser reads `response.body` with a `ReadableStream` reader and inserts decoded text as it arrives.
+
+Custom Prompt requests use a compact retrieval path. The server embeds the query and all owned document chunks, computes cosine similarity directly, selects the top three, restores their document order, and injects them as reference context. Retrieval is always active for this path; there is no feature flag or cache fallback.
+
+### Redis coordination and limits
+
+Three Redis-backed limiters cover global traffic, authentication attempts, and per-user AI traffic. A separate daily AI quota expires at the next UTC midnight.
+
+AI requests also acquire a Redis `SET NX EX` lock scoped to user and document. Each acquisition has a unique token, and release uses an atomic Lua compare-and-delete script. That ownership check is intentionally retained so a slow request cannot release a newer request's lock.
+
+### Background PDF export
+
+The export endpoint enqueues a BullMQ job and immediately returns its ID. The client polls job status, then downloads the PDF after the worker completes. Completed and failed jobs use BullMQ's bounded retention settings; the pipeline has no application-level result cache, retry policy, or export-specific rate limiter.
+
+## Tech stack
+
+| Area | Technology |
 |---|---|
 | Frontend | React 19, Vite 7, Tailwind CSS 4, CodeMirror 6, Axios |
-| Backend | Node.js, Express 5, Mongoose 8 |
-| Database | MongoDB (Atlas in prod) |
-| Queue | BullMQ |
-| Cache / Locks | Redis (Redis Cloud in prod) |
-| AI | Google Gemini 2.5 Flash (generation), `gemini-embedding-001` (retrieval) |
-| Export | PDFKit, docx |
-| Import | Mammoth, pdf-parse |
-| Auth | JWT, bcryptjs |
-| Security | helmet, express-rate-limit, multer |
-| Containerization | Docker (multi-stage build, single-container image) |
-| Cloud / Hosting | AWS EC2 (Dockerized deploy), Vercel (frontend), Render (backend) |
-| CI | GitHub Actions (tests, lint, production build on every push/PR) |
+| Backend | Node.js 20+, Express 5, Mongoose 8 |
+| Data | MongoDB Atlas, MongoDB Atlas Search |
+| Coordination | Redis, `rate-limit-redis`, BullMQ |
+| AI | Google Gemini 2.5 Flash, Gemini embeddings, cosine similarity RAG |
+| Files | PDFKit export, `pdf-parse` import, Multer upload handling |
+| Auth and security | JWT, bcryptjs, Helmet, CORS |
+| Tests | Vitest and Supertest backend integration tests |
+| Containerization | Docker multi-stage, single-container application image |
+| Deployment | AWS EC2 on this branch; Vercel and Render on `main` |
+| CI/CD | GitHub Actions tests, lint, build, and EC2 deployment |
 
----
+## Getting started
 
-## Getting Started
+### Prerequisites
 
-**Prerequisites:** Node.js 20+, MongoDB, Redis (optional — features degrade gracefully without it)
+- Node.js 20+
+- pnpm 10+
+- MongoDB; Atlas Search indexes are required for the search feature
+- Redis; the backend will not boot without it
+- A Google Gemini API key
+
+### Atlas Search indexes
+
+Create these Atlas Search indexes in the database named by `DB_URI` before starting the backend:
+
+- Collection `documents`, index `documents_and_chunks`: `{"mappings":{"dynamic":false,"fields":{"title":{"type":"string","analyzer":"lucene.standard"},"subtitle":{"type":"string","analyzer":"lucene.standard"}}}}`
+- Collection `documentchunks`, index `chunks_content`: `{"mappings":{"dynamic":false,"fields":{"content":{"type":"string","analyzer":"lucene.standard","store":true}}}}`
+
+A missing index or an index created on the wrong collection can make Atlas Search return an empty result set without an error.
+
+Clone and install:
 
 ```bash
 git clone https://github.com/Animesh-kumar23/WriteAI.git
 cd WriteAI
+pnpm --dir backend install --frozen-lockfile
+pnpm --dir frontend install --frozen-lockfile
 ```
 
-### Backend
+Configure and start the backend:
 
 ```bash
 cd backend
-cp .env.example .env   # fill in DB_URI, JWT_SECRET_KEY, GEMINI_API_KEY
-pnpm install
+cp .env.example .env
+# Fill in the required values, then:
 pnpm dev
 ```
 
-### Frontend
+In another terminal, configure and start the frontend:
 
 ```bash
 cd frontend
-cp .env.example .env   # set VITE_API_BASE_URL=http://localhost:3000
-pnpm install
+cp .env.example .env
 pnpm dev
 ```
 
-### Environment Variables
+The frontend defaults to port `5173`; the backend defaults to port `3000`.
 
-**`backend/.env`**
+### Environment variables
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DB_URI` | ✅ | MongoDB connection string |
-| `JWT_SECRET_KEY` | ✅ | JWT signing secret |
-| `GEMINI_API_KEY` | ✅ | Google AI key |
-| `CLIENT_URL` | ✅ | Comma-separated frontend origins for CORS |
-| `REDIS_URL` | No | Enables rate limiting, locks, and export cache |
-| `AI_DAILY_LIMIT` | No | Max AI calls per user per day (default: 100) |
-| `ATLAS_SEARCH_ENABLED` | No | `true` to use fuzzy Atlas Search in prod |
-| `RAG_ENABLED` | No | `true` to enable retrieval-augmented context for Continue/Custom Prompt (default: off) |
-| `EMBEDDING_MODEL` | No | Gemini embedding model for retrieval (default: `gemini-embedding-001`) |
+`backend/.env`:
 
-**`frontend/.env`**
+| Variable | Required | Purpose |
+|---|---:|---|
+| `DB_URI` | Yes | MongoDB connection string |
+| `JWT_SECRET_KEY` | Yes | JWT signing secret |
+| `GEMINI_API_KEY` | Yes | Gemini API credential |
+| `REDIS_URL` | Yes | Redis connection used by limits, quotas, locks, and BullMQ |
+| `PORT` | No | API port; defaults to `3000` |
+| `CLIENT_URL` | No | Comma-separated CORS origins; defaults to `http://localhost:5173` |
+| `COOKIE_SECURE` | No | Defaults to HTTPS-only cookies in production; set `false` only for plain-HTTP demos |
+| `AI_DAILY_LIMIT` | No | Per-user daily AI allowance; defaults to `100` |
+| `EMBEDDING_MODEL` | No | Retrieval embedding model; defaults to `gemini-embedding-001` |
 
-| Variable | Required | Notes |
-|---|---|---|
-| `VITE_API_BASE_URL` | ✅ | Backend URL (e.g. `http://localhost:3000`) |
-| `VITE_SHOW_CONTACT_INFO` | No | `true` to show real contact details in footer |
+`frontend/.env`:
 
----
+| Variable | Required | Purpose |
+|---|---:|---|
+| `VITE_API_BASE_URL` | Yes | Backend base URL, for example `http://localhost:3000` |
+| `VITE_SHOW_CONTACT_INFO` | No | Enables live footer contact links when set to `true` |
+
+## API surface
+
+| Prefix | Main operations |
+|---|---|
+| `/api/auth` | Register, login, logout, current user |
+| `/api/documents` | CRUD, chunk reads/batch saves, PDF import, Atlas Search |
+| `/api/ai` | Completed create-flow generation and streamed editor generation |
+| `/api/exports` | Enqueue PDF, poll status, download result, queue stats |
 
 ## Testing
 
-WriteAI includes 33 focused frontend and backend automated tests covering document authorization, chunk-level optimistic-concurrency conflicts, Redis-based AI locks and quotas, BullMQ export queueing, autosave race conditions, streamed AI responses, and RAG retrieval (ownership checks, cache and embedding-budget behavior, malformed-vector handling, and the token-based AI lock).
-
-The test stack includes Vitest, Supertest, React Testing Library, an isolated MongoDB test database, and an isolated Redis test database. GitHub Actions runs the test suites, frontend linting, and the production build on pushes and pull requests.
+The retained backend integration suite uses Vitest and Supertest. Frontend tests were removed as part of the scope reduction. Run backend tests from `backend/` when working on that suite:
 
 ```bash
-docker compose up -d mongo redis
-pnpm --dir backend test
-pnpm --dir frontend test
-pnpm --dir backend test:coverage
-pnpm --dir frontend test:coverage
+pnpm test
 ```
 
-Coverage commands and instructions for adding tests are in **[TESTS.md](TESTS.md)**. Deployment remains handled by the existing hosting integrations.
-
----
+Set `ATLAS_SEARCH_TEST_URI` to a read-only Atlas connection string to run the real `$search` smoke test; it is skipped when the variable is absent because MongoDB Community does not provide Atlas Search.
 
 ## Deployment
 
-The existing hosted version deploys the frontend and backend separately:
+This branch builds the frontend and backend into one Docker image. Express serves both the API and the compiled SPA from one container, deployed on AWS EC2 at [13.201.5.159](http://13.201.5.159/).
 
-| Service | Platform | URL |
-|---|---|---|
-| React frontend | [Vercel](https://vercel.com) | [writeai-teal.vercel.app](https://writeai-teal.vercel.app) |
-| Express API | [Render](https://render.com) | writeai-1jcj.onrender.com |
+Pushes to `aws-deploy` run tests, frontend lint, and the production build before the GitHub Actions deploy job connects to EC2, rebuilds the image, and replaces the running container. See [DOCKER.md](DOCKER.md) for local Docker usage and [DEPLOY.md](DEPLOY.md) for the EC2 setup and operations guide.
 
-The whole app also runs as a **single Docker container** — the root `Dockerfile`
-builds the React frontend and bakes it into the backend image, so one Node
-process serves both the API and the static site on one port. It's deployed this
-way on a **free-tier AWS EC2** instance. See **[DOCKER.md](DOCKER.md)** for local
-Docker basics and **[DEPLOY.md](DEPLOY.md)** for the step-by-step single-EC2 guide.
+The `main` branch remains the separate Vercel frontend and Render backend deployment; its `render.yaml` is retained here for parity.
 
-The `render.yaml` Blueprint is still included for the existing Render deploy.
+## Project structure
 
----
-
-## Project Structure
-
-```
-writeai/
+```text
+WriteAI/
 ├── backend/src/
-│   ├── configs/       # db, redis, env, genai
-│   ├── controllers/   # auth, documents, ai, exports, import, search, profile
-│   ├── middlewares/   # auth, upload, rateLimit, aiQuota
+│   ├── configs/       # environment, MongoDB, Redis, Gemini
+│   ├── controllers/   # auth, documents, AI, exports, import, search
+│   ├── middlewares/   # auth, upload, rate limits, daily quota
 │   ├── models/        # User, Document, DocumentChunk
-│   ├── queues/        # export.queue.js (BullMQ)
-│   ├── services/      # retrieval.js (RAG)
-│   ├── workers/       # export.worker.js
-│   ├── routes/
-│   └── utils/         # pdf.generator, docx.generator, import.parser, documentChunks, aiLock
-│
-└── frontend/src/
-    ├── components/    # edit-document, document-view, home, ui
-    ├── contexts/      # AuthContext, ThemeContext
-    ├── hooks/         # useDocumentEditor, useDocumentChunks, useSearch
-    ├── lib/           # documentModel.js, aiStream.js, axios.js
-    └── pages/         # Dashboard, EditDocument, Document, Landing, Profile, Auth
+│   ├── queues/        # BullMQ export queue
+│   ├── services/      # cosine-similarity retrieval
+│   ├── workers/       # PDF export worker
+│   └── utils/         # PDF, import, chunks, Redis AI lock
+├── frontend/src/
+│   ├── components/
+│   ├── hooks/
+│   ├── lib/           # documentModel, stream reader, Axios
+│   └── pages/
+├── .github/workflows/ # CI and aws-deploy CD
+├── DEPLOY.md           # EC2 deployment guide
+├── DOCKER.md           # Local Docker guide
+├── Dockerfile          # Production multi-stage image
+├── docker-compose.yml  # Local app, MongoDB, and Redis
+├── docs/screenshots/
+├── NOTICE
+└── render.yaml
 ```
 
----
+## License and attribution
 
-## License
+[Apache 2.0](LICENSE). See [NOTICE](NOTICE) for retained notices.
 
-[Apache 2.0](LICENSE)
-
-Early data models and auth scaffolding were adapted from [Imprintly](https://github.com/KeepSerene/imprintly-ai-e-book-creator-mern), then extended with the chunk storage, Redis, queue, and RAG work described above.
+Initial data models and auth scaffolding were adapted from [Imprintly](https://github.com/KeepSerene/imprintly-ai-e-book-creator-mern) (Apache 2.0). Substantially modified: chunk-based storage, optimistic concurrency control, streaming AI generation, Redis locking, background export jobs, and retrieval were built for this project.

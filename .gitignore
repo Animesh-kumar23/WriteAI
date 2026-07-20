@@ -10,6 +10,7 @@ lerna-debug.log*
 
 # Dependencies
 node_modules
+.pnpm-store/
 
 # Build outputs
 dist
@@ -79,3 +80,4 @@ tmp/
 # Local notes (never push)
 # ====================================
 frontend/help.txt
+.claude/

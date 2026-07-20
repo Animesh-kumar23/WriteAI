@@ -1,4 +1,3 @@
-const ENV = require("../configs/env");
 const { ai } = require("../configs/genai");
 const { acquireAILock, releaseAILock } = require("../utils/aiLock");
 const { retrieveRelevantChunks } = require("../services/retrieval");
@@ -34,10 +33,8 @@ function sanitizeInput(input, maxLength = 500) {
 }
 
 /**
- * Same idea as sanitizeInput, but keeps the END of the input instead of the
- * beginning. Used for "continue"/"custom" actions, where the content that
- * matters most (the point generation needs to pick up from) is whatever was
- * written last, not whatever was written first.
+ * Same idea as sanitizeInput, but keeps the end of the input. Custom prompts
+ * append to the document, so the most recent content is the useful context.
  */
 function sanitizeContentTail(input, maxLength = 12000) {
   if (!input) return "";
@@ -56,11 +53,10 @@ function sanitizeContentTail(input, maxLength = 12000) {
  * blends the document title, the user's instruction (if any), and the tail
  * of what's already been written.
  */
-function buildRagQuery(action, { safeDocumentTitle, safeCustomPrompt, safeExistingContent }) {
-  const parts = action === "custom"
-    ? [safeDocumentTitle, safeCustomPrompt, safeExistingContent.slice(-1200)]
-    : [safeDocumentTitle, safeExistingContent.slice(-1200)];
-  return parts.filter(Boolean).join("\n");
+function buildRagQuery({ safeDocumentTitle, safeCustomPrompt, safeExistingContent }) {
+  return [safeDocumentTitle, safeCustomPrompt, safeExistingContent.slice(-1200)]
+    .filter(Boolean)
+    .join("\n");
 }
 
 const RETRIEVED_CONTEXT_INSTRUCTION =
@@ -78,15 +74,14 @@ ${retrievedContext}
 }
 
 async function getRetrievedContext({ req, documentId, action, safeDocumentTitle, safeCustomPrompt, safeExistingContent }) {
-  if (!ENV.RAG_ENABLED || !documentId || (action !== "continue" && action !== "custom")) {
+  if (!documentId || action !== "custom") {
     return "";
   }
 
   const relevant = await retrieveRelevantChunks({
     documentId,
     userId: req.user.id,
-    queryText: buildRagQuery(action, { safeDocumentTitle, safeCustomPrompt, safeExistingContent }),
-    excludeText: safeExistingContent,
+    queryText: buildRagQuery({ safeDocumentTitle, safeCustomPrompt, safeExistingContent }),
   });
 
   return relevant
@@ -103,22 +98,9 @@ async function streamAIContent(req, res) {
     documentDescription = "",
     existingContent = "",
     customPrompt = "",
-    aiConfig = {},
   } = req.body;
 
-  const {
-    style = "Professional",
-    tone = [],
-    audience = "",
-    format = "",
-    length = "",
-    extraInstructions = "",
-  } = aiConfig;
-
-  const allowedActions = [
-    "generate", "continue", "rewrite", "expand",
-    "shorten", "grammar", "simplify", "custom",
-  ];
+  const allowedActions = ["generate", "rewrite", "custom"];
 
   if (!documentTitle && action === "generate") {
     return res.status(400).json({ error: "Document title is missing!" });
@@ -130,17 +112,7 @@ async function streamAIContent(req, res) {
 
   const safeDocumentTitle = sanitizeInput(documentTitle, 300);
   const safeDocumentDescription = sanitizeInput(documentDescription, 600);
-  const safeStyle = sanitizeInput(style, 50);
-  const safeAudience = sanitizeInput(audience, 100);
-  const safeFormat = sanitizeInput(format, 100);
-  const safeLength = sanitizeInput(length, 50);
-  const safeExtraInstructions = sanitizeInput(extraInstructions, 500);
-  const safeTone = Array.isArray(tone)
-    ? tone.slice(0, 10).map((t) => sanitizeInput(String(t), 30)).join(", ") || "None"
-    : "None";
-  // "continue"/"custom" need the END of what's already written (that's where generation
-  // picks up from); every other action keeps the original head-preserving behavior.
-  const safeExistingContent = (action === "continue" || action === "custom")
+  const safeExistingContent = action === "custom"
     ? sanitizeContentTail(existingContent, 12000)
     : sanitizeInput(existingContent, 12000);
   const safeCustomPrompt = sanitizeInput(customPrompt, 1500);
@@ -173,59 +145,11 @@ Generate polished markdown content.
 
 Title: ${safeDocumentTitle}
 Description: ${safeDocumentDescription}
-Style: ${safeStyle}
-Tone: ${safeTone}
-Audience: ${safeAudience || "General"}
-Format: ${safeFormat || "Freeform"}
-Length: ${safeLength || "Medium"}
-Instructions: ${safeExtraInstructions || "None"}
 `;
-        break;
-
-      case "continue":
-        prompt = `You are an expert AI writing assistant.
-
-Continue the following document naturally.
-
-Title: ${safeDocumentTitle}${safeDocumentDescription ? `\nDescription: ${safeDocumentDescription}` : ""}
-
-${retrievedContextBlock}<existing_content>
-${safeExistingContent}
-</existing_content>
-
-IMPORTANT:
-1. Continue seamlessly from where the content ends
-2. Do NOT repeat existing content
-3. Match the existing tone, style, and format
-4. Return ONLY the continuation text`;
         break;
 
       case "rewrite":
         prompt = `Rewrite while preserving meaning:
-
-${safeExistingContent}`;
-        break;
-
-      case "expand":
-        prompt = `Expand this content with more detail:
-
-${safeExistingContent}`;
-        break;
-
-      case "shorten":
-        prompt = `Shorten this content while preserving meaning:
-
-${safeExistingContent}`;
-        break;
-
-      case "grammar":
-        prompt = `Fix grammar only:
-
-${safeExistingContent}`;
-        break;
-
-      case "simplify":
-        prompt = `Simplify this content:
 
 ${safeExistingContent}`;
         break;
@@ -302,22 +226,9 @@ async function generateDocumentContent(req, res) {
     documentDescription = "",
     existingContent = "",
     customPrompt = "",
-    aiConfig = {},
   } = req.body;
 
-  const {
-    style = "Professional",
-    tone = [],
-    audience = "",
-    format = "",
-    length = "",
-    extraInstructions = "",
-  } = aiConfig;
-
-  const allowedActions = [
-    "generate", "continue", "rewrite", "expand",
-    "shorten", "grammar", "simplify", "custom",
-  ];
+  const allowedActions = ["generate", "rewrite", "custom"];
 
   if (!documentTitle) {
     return res.status(400).json({ error: "Document title is missing!" });
@@ -329,17 +240,7 @@ async function generateDocumentContent(req, res) {
 
   const safeDocumentTitle = sanitizeInput(documentTitle, 300);
   const safeDocumentDescription = sanitizeInput(documentDescription, 600);
-  const safeStyle = sanitizeInput(style, 50);
-  const safeAudience = sanitizeInput(audience, 100);
-  const safeFormat = sanitizeInput(format, 100);
-  const safeLength = sanitizeInput(length, 50);
-  const safeExtraInstructions = sanitizeInput(extraInstructions, 500);
-  const safeTone = Array.isArray(tone)
-    ? tone.slice(0, 10).map((t) => sanitizeInput(String(t), 30)).join(", ") || "None specified"
-    : "None specified";
-  // "continue"/"custom" need the END of what's already written; every other action
-  // keeps the original head-preserving behavior.
-  const safeExistingContent = (action === "continue" || action === "custom")
+  const safeExistingContent = action === "custom"
     ? sanitizeContentTail(existingContent, 8000)
     : sanitizeInput(existingContent, 8000);
   const safeCustomPrompt = sanitizeInput(customPrompt, 1500);
@@ -376,76 +277,17 @@ Generate polished, high-quality markdown content.
 <user_input>
 <document_title>${safeDocumentTitle}</document_title>
 <user_request>${safeDocumentDescription}</user_request>
-<writing_style>${safeStyle}</writing_style>
-<tone>${safeTone}</tone>
-<target_audience>${safeAudience || "General audience"}</target_audience>
-<document_format>${safeFormat || "Freeform"}</document_format>
-<desired_length>${safeLength || "Medium"}</desired_length>
-<extra_instructions>${safeExtraInstructions || "None"}</extra_instructions>
 </user_input>
 
 IMPORTANT:
-1. Write in a ${safeStyle.toLowerCase()} tone
-2. Match the requested audience
-3. Respect the requested format
-4. Respect the requested length
-5. Follow extra instructions carefully
-6. Use markdown formatting
-7. Produce polished ready-to-edit content
+1. Use markdown formatting
+2. Produce polished ready-to-edit content
 
 Generate the content now.`;
         break;
 
-      case "continue":
-        prompt = `You are an expert AI writing assistant.
-
-Continue the existing document naturally.
-
-${retrievedContextBlock}<existing_content>
-${safeExistingContent}
-</existing_content>
-
-IMPORTANT:
-1. Continue seamlessly
-2. Do NOT repeat content
-3. Match existing tone/style/format
-4. Return ONLY continuation text`;
-        break;
-
       case "rewrite":
         prompt = `Rewrite this content while preserving meaning.
-
-CONTENT:
-${safeExistingContent}`;
-        break;
-
-      case "expand":
-        prompt = `Expand this content with more detail, examples, and clarity.
-
-CONTENT:
-${safeExistingContent}`;
-        break;
-
-      case "shorten":
-        prompt = `Condense this content while preserving key meaning.
-
-CONTENT:
-${safeExistingContent}`;
-        break;
-
-      case "grammar":
-        prompt = `Fix grammar, punctuation, and readability.
-
-Do not change meaning.
-
-CONTENT:
-${safeExistingContent}`;
-        break;
-
-      case "simplify":
-        prompt = `Rewrite in simpler language.
-
-Make it easier to understand.
 
 CONTENT:
 ${safeExistingContent}`;

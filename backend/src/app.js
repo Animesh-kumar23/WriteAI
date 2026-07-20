@@ -6,7 +6,6 @@ const multer = require("multer");
 const path = require("path");
 const ENV = require("./configs/env");
 const authRouter = require("./routes/auth.route");
-const profileRouter = require("./routes/profile.route");
 const documentsRouter = require("./routes/documents.route");
 const aiRouter = require("./routes/ai.route");
 const exportsRouter = require("./routes/exports.route");
@@ -64,7 +63,6 @@ app.use((req, res, next) => {
 app.use(globalLimiter);
 
 app.use("/api/auth", authRouter);
-app.use("/api/profile", profileRouter);
 app.use("/api/documents", documentsRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/exports", exportsRouter);

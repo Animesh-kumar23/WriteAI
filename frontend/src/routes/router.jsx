@@ -1,12 +1,10 @@
 import { createBrowserRouter } from "react-router";
 import { Outlet } from "react-router";
 import {
-  DocumentPage,
   DashboardPage,
   EditDocumentPage,
   ErrorPage,
   LandingPage,
-  ProfilePage,
   SignInPage,
   SignUpPage,
 } from "../pages";
@@ -49,26 +47,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "documents/:documentId",
-        element: (
-          <ProtectedRoute>
-            <DocumentPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: "documents/:documentId/edit",
         element: (
           <ProtectedRoute>
             <EditDocumentPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "profile",
-        element: (
-          <ProtectedRoute>
-            <ProfilePage />
           </ProtectedRoute>
         ),
       },

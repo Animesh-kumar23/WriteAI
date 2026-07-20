@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,12 +9,12 @@
 
     <meta
       name="description"
-      content="WriteAI is a free AI writing assistant that helps you draft, edit, rewrite, and export long-form documents as PDF or DOCX. Powered by Google Gemini."
+      content="WriteAI is a free AI writing assistant that helps you draft, edit, rewrite, and export long-form documents as PDF. Powered by Google Gemini."
     />
 
     <meta
       name="keywords"
-      content="AI writing assistant, AI document editor, write with AI, AI content generator, PDF export, DOCX export, Gemini AI writing, long-form writing tool, markdown editor, document collaboration"
+      content="AI writing assistant, AI document editor, write with AI, AI content generator, PDF export, Gemini AI writing, long-form writing tool, markdown editor, document collaboration"
     />
 
     <meta name="author" content="Animesh Kumar" />
@@ -33,7 +33,7 @@
     />
     <meta
       property="og:description"
-      content="Draft, edit, rewrite, and export professional documents with AI. Streaming generation, chunk-based autosave, PDF/DOCX export."
+      content="Draft, edit, rewrite, and export professional documents with AI. Streaming generation, chunk-based autosave, PDF export."
     />
     <meta property="og:image" content="https://writeai-teal.vercel.app/images/hero-image.png" />
     <meta property="og:image:width" content="1200" />
@@ -64,7 +64,7 @@
         "@type": "WebApplication",
         "name": "WriteAI",
         "url": "https://writeai-teal.vercel.app/",
-        "description": "AI-powered writing assistant for drafting, editing, and exporting professional long-form documents as PDF or DOCX.",
+        "description": "AI-powered writing assistant for drafting, editing, and exporting professional long-form documents as PDF.",
         "applicationCategory": "ProductivityApplication",
         "applicationSubCategory": "Writing",
         "operatingSystem": "Web",
@@ -89,12 +89,11 @@
         "featureList": [
           "AI content generation powered by Google Gemini 2.5 Flash",
           "Real-time streaming AI text output",
-          "8 AI writing actions: Generate Draft, Continue, Rewrite, Expand, Shorten, Fix Grammar, Simplify, Custom Prompt",
+          "3 AI writing actions: Generate Draft, Rewrite Selection, Custom Prompt",
           "PDF export via background job queue",
-          "DOCX export via background job queue",
           "Markdown editor with live split preview",
           "Chunk-based autosave — only changed sections are written",
-          "Document import from PDF and DOCX",
+          "Document import from PDF",
           "Full-text search across all documents and content",
           "Per-chunk version conflict detection and resolution"
         ]
@@ -122,21 +121,6 @@
   </head>
 
   <body>
-    <!--
-      Inline theme script: runs synchronously before React mounts so
-      there is no flash of wrong theme on page load.
-    -->
-    <script>
-      (function () {
-        var stored = localStorage.getItem("theme");
-        var prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-        if (stored === "dark" || (!stored && prefersDark)) {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
