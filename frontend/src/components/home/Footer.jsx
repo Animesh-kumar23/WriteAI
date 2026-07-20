@@ -2,11 +2,6 @@ import { useAuthContext } from "../../contexts/AuthContext";
 import { Link } from "react-router";
 import LogoIcon from "../LogoIcon";
 
-// Controlled by VITE_SHOW_CONTACT_INFO=true in the deployment env vars.
-// When false: buttons render but do nothing on click (safe to share publicly).
-// When true: all links are live (share with people you want to know your info).
-const showContact = import.meta.env.VITE_SHOW_CONTACT_INFO === "true";
-
 const socials = [
   {
     href: "https://github.com/Animesh-kumar23/WriteAI",
@@ -24,22 +19,10 @@ function SocialButton({ href, ariaLabel, imgSrc }) {
   const cls =
     "size-9 sm:size-10 bg-white/5 backdrop-blur-sm rounded-lg inline-flex justify-center items-center transition-all duration-200 hover:bg-violet-600 hover:scale-101 focus-visible:bg-violet-600 focus-visible:scale-101";
 
-  const inner = (
-    <img src={imgSrc} alt="" className="size-4 sm:size-5 brightness-0 invert" />
-  );
-
-  if (showContact) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={cls}>
-        {inner}
-      </a>
-    );
-  }
-
   return (
-    <button type="button" aria-label={ariaLabel} className={cls} onClick={() => {}}>
-      {inner}
-    </button>
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={cls}>
+      <img src={imgSrc} alt="" className="size-4 sm:size-5 brightness-0 invert" />
+    </a>
   );
 }
 
@@ -77,18 +60,12 @@ function Footer() {
                 Helping writers think, draft, and create with AI assistance.
               </p>
 
-              {showContact ? (
-                <a
-                  href="mailto:animeshkumar.bgs@gmail.com"
-                  className="text-violet-400 text-sm sm:text-base transition-colors duration-200 hover:text-violet-300"
-                >
-                  animeshkumar.bgs@gmail.com
-                </a>
-              ) : (
-                <span className="text-violet-400 text-sm sm:text-base">
-                  alive590@gmail.com
-                </span>
-              )}
+              <a
+                href="mailto:animeshkumar.bgs@gmail.com"
+                className="text-violet-400 text-sm sm:text-base transition-colors duration-200 hover:text-violet-300"
+              >
+                animeshkumar.bgs@gmail.com
+              </a>
             </div>
 
             {/* Social links */}
@@ -134,20 +111,14 @@ function Footer() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-y-3 sm:gap-y-0">
             <p className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
               &copy; {new Date().getFullYear()} WriteAI — Licensed under the{" "}
-              {showContact ? (
-                <a
-                  href="https://github.com/Animesh-kumar23/WriteAI/blob/main/LICENSE"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 transition-colors hover:text-violet-400 focus-visible:text-violet-400"
-                >
-                  Apache 2.0 License
-                </a>
-              ) : (
-                <span className="underline underline-offset-2">
-                  Apache 2.0 License
-                </span>
-              )}
+              <a
+                href="https://github.com/Animesh-kumar23/WriteAI/blob/main/LICENSE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 transition-colors hover:text-violet-400 focus-visible:text-violet-400"
+              >
+                Apache 2.0 License
+              </a>
             </p>
 
             <p className="text-gray-500 text-xs sm:text-sm flex items-center gap-x-1.5">
@@ -155,18 +126,14 @@ function Footer() {
               <span className="text-violet-400 text-base">💜</span>
               <span>
                 by{" "}
-                {showContact ? (
-                  <a
-                    href="https://github.com/Animesh-kumar23"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white transition-all duration-200 hover:underline focus-visible:underline"
-                  >
-                    AnimeshKumar
-                  </a>
-                ) : (
-                  <span className="text-white">Alive590</span>
-                )}
+                <a
+                  href="https://github.com/Animesh-kumar23"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white transition-all duration-200 hover:underline focus-visible:underline"
+                >
+                  AnimeshKumar
+                </a>
               </span>
             </p>
           </div>

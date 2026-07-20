@@ -2,12 +2,10 @@
   "name": "writeai",
   "version": "1.0.0",
   "description": "AI-powered document creation platform",
-  "main": "index.js",
   "scripts": {
     "build": "cd backend && pnpm install && cd ../frontend && pnpm install && pnpm run build",
     "start": "cd backend && pnpm start",
-    "test": "pnpm --dir backend test",
-    "test:backend": "pnpm --dir backend test"
+    "test": "pnpm --dir backend test"
   },
   "keywords": [
     "edocument",

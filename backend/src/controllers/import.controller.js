@@ -1,5 +1,4 @@
 const Document = require("../models/document");
-const DocumentChunk = require("../models/DocumentChunk");
 const { replaceDocumentChunks } = require("../utils/documentChunks");
 const { parsePdfBuffer } = require("../utils/import.parser");
 
@@ -34,11 +33,8 @@ async function importDocument(req, res) {
 
     await replaceDocumentChunks(documentId, parsedText);
 
-    const chunkCount = await DocumentChunk.countDocuments({ documentId });
-
     return res.status(200).json({
       message: "Document imported successfully.",
-      chunkCount,
     });
   } catch (error) {
     console.error("Error importing document:", error);

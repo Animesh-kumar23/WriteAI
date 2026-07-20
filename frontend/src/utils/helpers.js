@@ -93,7 +93,8 @@ export function formatMdContent(content) {
         /\*\*(.*?)\*\*/g,
         "<strong class='font-semibold text-slate-900'>$1</strong>"
       )
-      .replace(/(?<!\*)\*(?!\*)(.*?) (?<!\*)\*(?!\*)/g, "<em class='italic text-slate-700'>$1</em>")
+      .replace(/(?<!\*)\*(?!\*)([^*\n]+)\*(?!\*)/g, "<em class='italic text-slate-700'>$1</em>")
+      .replace(/(?<!_)_(?!_)([^_\n]+)_(?!_)/g, "<em class='italic text-slate-700'>$1</em>")
       // Blockquote
       .replace(
         /^> (.*$)/gm,
@@ -111,12 +112,12 @@ export function formatMdContent(content) {
       )
       // Step B: Wrap contiguous groups of 'ul-item' in <ul>
       .replace(
-        /((?:<li [^>]*class="[^"]*ul-item"[^>]*>.*?<\/li>(?:\n|$))+)/g,
+        /((?:<li [^>]*class=['"][^'"]*ul-item[^'"]*['"][^>]*>.*?<\/li>(?:\n|$))+)/g,
         "<ul class='list-disc my-4'>$1</ul>"
       )
       // Step C: Wrap contiguous groups of 'ol-item' in <ol>
       .replace(
-        /((?:<li [^>]*class="[^"]*ol-item"[^>]*>.*?<\/li>(?:\n|$))+)/g,
+        /((?:<li [^>]*class=['"][^'"]*ol-item[^'"]*['"][^>]*>.*?<\/li>(?:\n|$))+)/g,
         "<ol class='list-decimal my-4'>$1</ol>"
       )
       // Paragraph

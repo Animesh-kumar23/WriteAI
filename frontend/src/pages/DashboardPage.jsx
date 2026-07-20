@@ -91,7 +91,7 @@ const DeleteConfirmationModal = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-modal-title"
-          className="max-w-md w-full bg-white dark:bg-slate-800 rounded-xl p-5 md:p-6 shadow-xl dark:shadow-black/40 relative animate-in zoom-in-95 duration-200"
+          className="max-w-md w-full bg-white dark:bg-slate-800 rounded-xl p-5 md:p-6 shadow-xl dark:shadow-black/40 relative animate-in duration-200"
         >
           <h3
             id="delete-modal-title"
