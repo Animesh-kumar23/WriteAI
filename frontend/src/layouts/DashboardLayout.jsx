@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useAuthContext } from "../contexts/AuthContext";
 import { Link, useNavigate } from "react-router";
 import { LogoIcon, ProfileMenu } from "../components";
-import ThemeToggle from "../components/ui/ThemeToggle";
 
 function DashboardLayout({ children }) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -40,8 +39,6 @@ function DashboardLayout({ children }) {
         </Link>
 
         <div className="flex items-center gap-x-1">
-          <ThemeToggle />
-
           <ProfileMenu
             isOpen={isProfileMenuOpen}
             onToggle={(event) => {

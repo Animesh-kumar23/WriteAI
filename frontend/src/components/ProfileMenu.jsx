@@ -1,7 +1,6 @@
 import { API_BASE_URL } from "../utils/api-endpoints";
-import { ChevronDown, ChevronUp, LogOut, Moon, Sun, User2 } from "lucide-react";
+import { ChevronDown, ChevronUp, LogOut, User2 } from "lucide-react";
 import { Link } from "react-router";
-import { useTheme } from "../contexts/ThemeContext";
 
 const ProfileMenu = ({
   isOpen,
@@ -11,8 +10,6 @@ const ProfileMenu = ({
   email,
   signoutCallback,
 }) => {
-  const { isDark, toggleTheme } = useTheme();
-
   return (
     <nav onClick={(event) => event.stopPropagation()} className="relative">
       <button
@@ -62,33 +59,6 @@ const ProfileMenu = ({
             <p className="text-gray-500 dark:text-slate-400 text-xs truncate">
               {email}
             </p>
-          </div>
-
-          {/* Appearance toggle row */}
-          <div className="border-b border-gray-100 dark:border-slate-700 px-3 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-x-2 text-sm text-gray-700 dark:text-slate-300">
-              {isDark ? (
-                <Sun className="size-4 text-amber-400" />
-              ) : (
-                <Moon className="size-4 text-slate-500" />
-              )}
-              <span>{isDark ? "Light mode" : "Dark mode"}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 ${
-                isDark ? "bg-violet-500" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`size-3.5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
-                  isDark ? "translate-x-[18px]" : "translate-x-0.5"
-                }`}
-              />
-            </button>
           </div>
 
           {/* Menu items */}

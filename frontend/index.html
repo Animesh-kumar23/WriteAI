@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -122,21 +122,6 @@
   </head>
 
   <body>
-    <!--
-      Inline theme script: runs synchronously before React mounts so
-      there is no flash of wrong theme on page load.
-    -->
-    <script>
-      (function () {
-        var stored = localStorage.getItem("theme");
-        var prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-        if (stored === "dark" || (!stored && prefersDark)) {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

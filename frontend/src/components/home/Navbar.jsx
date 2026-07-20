@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router";
 import { LogOut, Menu, X } from "lucide-react";
 import ProfileMenu from "../ProfileMenu";
 import LogoIcon from "../LogoIcon";
-import ThemeToggle from "../ui/ThemeToggle";
 
 const navLinks = [{ label: "Features", hash: "#features" }];
 
@@ -73,8 +72,6 @@ function Navbar() {
 
         {/* Desktop profile menu & action buttons */}
         <div className="hidden lg:flex items-center gap-x-2">
-          <ThemeToggle />
-
           {isAuthenticated ? (
             <ProfileMenu
               isOpen={isProfileMenuOpen}
@@ -138,16 +135,8 @@ function Navbar() {
             ))}
           </nav>
 
-          {/* Theme toggle + user section */}
+          {/* User section */}
           <div className="p-4 border-t border-gray-100 dark:border-slate-800">
-            {/* Theme row */}
-            <div className="flex items-center justify-between px-2 py-2 mb-3">
-              <span className="text-sm text-gray-600 dark:text-slate-400 font-medium">
-                Appearance
-              </span>
-              <ThemeToggle />
-            </div>
-
             {isAuthenticated ? (
               <div className="space-y-3">
                 <div className="px-2 flex items-center gap-x-3">
