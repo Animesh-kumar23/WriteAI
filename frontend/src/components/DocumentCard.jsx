@@ -40,13 +40,21 @@ function DocumentCard({ document, onDelete, onRename }) {
             className="w-full aspect-16/10 object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full aspect-16/10 bg-linear-to-br from-violet-50 via-purple-50 to-slate-50 dark:from-violet-900/20 dark:via-purple-900/20 dark:to-slate-800 flex flex-col items-center justify-center gap-3">
-            <div className="size-14 bg-white dark:bg-slate-700 shadow-md rounded-2xl flex items-center justify-center">
-              <FileText className="size-7 text-violet-600 dark:text-violet-400" />
+          <div
+            aria-hidden="true"
+            className="w-full aspect-16/10 bg-linear-to-br from-violet-50 via-purple-50 to-slate-50 dark:from-violet-900/20 dark:via-purple-900/20 dark:to-slate-800 flex items-center justify-center"
+          >
+            <div className="relative transition-transform duration-500 group-hover:-translate-y-1 group-hover:rotate-1">
+              <div className="absolute inset-0 translate-x-3 translate-y-3 rotate-3 rounded-2xl border border-violet-200/70 bg-violet-100/70 dark:border-violet-700/40 dark:bg-violet-900/30" />
+              <div className="relative w-28 rounded-2xl border border-slate-200/80 bg-white/95 p-5 shadow-xl shadow-violet-200/40 dark:border-slate-600 dark:bg-slate-700 dark:shadow-black/20">
+                <FileText className="size-7 text-violet-600 dark:text-violet-400" />
+                <div className="mt-5 space-y-2">
+                  <span className="block h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-500" />
+                  <span className="block h-1.5 w-4/5 rounded-full bg-slate-200 dark:bg-slate-500" />
+                  <span className="block h-1.5 w-3/5 rounded-full bg-violet-200 dark:bg-violet-500/60" />
+                </div>
+              </div>
             </div>
-            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-              No cover
-            </span>
           </div>
         )}
 
