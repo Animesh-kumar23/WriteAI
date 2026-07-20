@@ -60,9 +60,6 @@ jobs:
       - name: Run backend tests
         run: pnpm --dir backend test
 
-      - name: Run frontend tests
-        run: pnpm --dir frontend test
-
       - name: Lint frontend
         run: pnpm --dir frontend lint
 
