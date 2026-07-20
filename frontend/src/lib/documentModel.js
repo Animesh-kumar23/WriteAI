@@ -1,5 +1,6 @@
-const SOFT_LIMIT = 4000;
-const HARD_LIMIT = 6000;
+import chunkLimits from "../../../config/chunkLimits.json";
+
+const HARD_LIMIT = chunkLimits.editorSplitCharacters;
 
 function findParagraphSplitPoint(text, maxLen) {
   const limit = Math.min(maxLen, text.length);
@@ -248,4 +249,4 @@ class DocumentModel {
 }
 
 export default DocumentModel;
-export { SOFT_LIMIT, HARD_LIMIT };
+export { HARD_LIMIT };

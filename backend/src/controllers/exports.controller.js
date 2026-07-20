@@ -96,15 +96,4 @@ async function downloadExport(req, res) {
   }
 }
 
-async function getExportStats(req, res) {
-  const [waiting, active, completed, failed] = await Promise.all([
-    exportQueue.getWaitingCount(),
-    exportQueue.getActiveCount(),
-    exportQueue.getCompletedCount(),
-    exportQueue.getFailedCount(),
-  ]);
-
-  return res.json({ waiting, active, completed, failed });
-}
-
-module.exports = { requestExport, getExportStatus, downloadExport, getExportStats };
+module.exports = { requestExport, getExportStatus, downloadExport };

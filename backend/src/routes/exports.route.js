@@ -4,13 +4,9 @@ const {
   requestExport,
   getExportStatus,
   downloadExport,
-  getExportStats,
 } = require("../controllers/exports.controller");
 
 router.use(authenticate);
-
-// Queue health stats — must be before /status/:jobId to avoid "stats" matching :jobId
-router.get("/stats", getExportStats);
 
 // Enqueue an export job
 router.post("/:documentId/:format", requestExport);

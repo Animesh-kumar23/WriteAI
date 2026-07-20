@@ -20,7 +20,6 @@ function createExportWorker() {
       const exportDoc = {
         title: document.title,
         subtitle: document.subtitle,
-        coverImage: document.coverImage,
         content,
       };
 

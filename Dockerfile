@@ -16,7 +16,7 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
-# corepack ships with Node 18+ and manages pnpm/yarn without npm install
+# Use the package-manager version pinned by the project.
 RUN corepack enable
 
 # Copy manifest files BEFORE source so Docker reuses this layer
@@ -25,6 +25,7 @@ COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY frontend/ ./
+COPY config/ /app/config/
 
 RUN pnpm build
 
@@ -45,6 +46,7 @@ COPY backend/package.json backend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 COPY backend/ ./
+COPY config/ /app/config/
 
 # Express in production mode serves frontend/dist as static files.
 # app.js resolves the path as __dirname + "/../../frontend/dist"

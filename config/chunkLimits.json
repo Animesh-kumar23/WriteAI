@@ -1,0 +1,8 @@
+{
+  "$comment": "Imported content targets 4,000 characters. Live editing waits until 6,000 to avoid splitting on every keystroke, while MongoDB allows 6,500 as validation headroom. The client sends at most 450 operations so it remains below the server's 500-operation hard cap.",
+  "targetChunkCharacters": 4000,
+  "editorSplitCharacters": 6000,
+  "databaseMaxChunkCharacters": 6500,
+  "clientBatchOperations": 450,
+  "serverBatchOperations": 500
+}

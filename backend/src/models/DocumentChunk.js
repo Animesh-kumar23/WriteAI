@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const chunkLimits = require("../../../config/chunkLimits.json");
 
 const documentChunkSchema = new mongoose.Schema(
   {
@@ -17,7 +18,7 @@ const documentChunkSchema = new mongoose.Schema(
     content: {
       type: String,
       default: "",
-      maxLength: 6500,
+      maxLength: chunkLimits.databaseMaxChunkCharacters,
     },
 
     version: {
