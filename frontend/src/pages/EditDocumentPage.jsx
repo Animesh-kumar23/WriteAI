@@ -20,7 +20,6 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Image,
   Italic,
   Loader2,
   Maximize,
@@ -301,8 +300,11 @@ function EditDocumentPage() {
     ? chunks.slice(-3).map((c) => c.content).join("")
     : editorRef.current.getText();
 
-  // Snapshot full doc BEFORE any clearing so we can restore if AI fails
+  // Keep the current document intact until replacement generation succeeds.
   const savedContent = isReplaceAction ? editorRef.current.getText() : null;
+  let replacementApplied = false;
+  let replacementText = "";
+  let replacementSaved = false;
 
   setIsGenerating(true);
   isStreamingRef.current = true;
@@ -322,25 +324,9 @@ function EditDocumentPage() {
     abortControllerRef.current =
       new AbortController();
 
-    // For append actions: cursor at actual end of CM6 doc (not context length)
-    // For replace actions: cursor at 0 after clear
-    let streamCursor = !isReplaceAction
-      ? editorRef.current.getDocLength()
-      : 0;
-
-    if (isReplaceAction) {
-      resetDocument("");
-
-      await axiosInstance.delete(
-        `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks`
-      );
-
-      editorRef.current.replaceRange(
-        0,
-        editorRef.current.getDocLength(),
-        ""
-      );
-    }
+    // Append actions remain visible while streaming. Replacement actions are
+    // buffered so the saved document stays untouched if generation fails.
+    let streamCursor = editorRef.current.getDocLength();
 
     await streamAIContent(
       {
@@ -353,6 +339,11 @@ function EditDocumentPage() {
         customPrompt,
       },
       (chunkText) => {
+        if (isReplaceAction) {
+          replacementText += chunkText;
+          return;
+        }
+
         editorRef.current.insertTextAt(
           streamCursor,
           chunkText
@@ -362,6 +353,25 @@ function EditDocumentPage() {
       },
       abortControllerRef.current.signal
     );
+
+    if (isReplaceAction) {
+      await axiosInstance.delete(
+        `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks`
+      );
+      replacementApplied = true;
+
+      resetDocument("");
+      editorRef.current.replaceRange(
+        0,
+        editorRef.current.getDocLength(),
+        replacementText
+      );
+
+      replacementSaved = await flushSave();
+      if (!replacementSaved) {
+        throw new Error("Generated content could not be saved.");
+      }
+    }
 
     toast.dismiss(loadingToast);
     toast.success("AI action completed");
@@ -373,8 +383,9 @@ function EditDocumentPage() {
 
     console.error("AI action failed:", error);
 
-    // Restore original content if AI failed after clearing the editor
-    if (savedContent !== null) {
+    // If replacement or its save failed after the destructive step, restore
+    // the original local snapshot and let the final flush put it back.
+    if (replacementApplied && savedContent !== null) {
       editorRef.current.replaceRange(
         0,
         editorRef.current.getDocLength(),
@@ -393,7 +404,7 @@ function EditDocumentPage() {
     isStreamingRef.current = false;
     setIsStreaming(false);
     setIsGenerating(false);
-    await flushSave();
+    if (!replacementSaved) await flushSave();
   }
 };
 
@@ -416,6 +427,29 @@ function EditDocumentPage() {
     setIsExporting(true);
 
     try {
+      const contentSaved = await flushSave();
+      if (!contentSaved) {
+        throw new Error("Save the document before exporting.");
+      }
+
+      const metadataSnapshot = {
+        title: document.title,
+        subtitle: document.subtitle,
+      };
+      await axiosInstance.put(
+        `${API_ENDPOINTS.DOCUMENTS.UPDATE_CONTENT}/${documentId}`,
+        metadataSnapshot
+      );
+
+      const currentDocument = documentRef.current;
+      const metadataStillCurrent =
+        currentDocument?.title === metadataSnapshot.title &&
+        currentDocument?.subtitle === metadataSnapshot.subtitle;
+      setMetadataSaveStatus(metadataStillCurrent ? "saved" : "dirty");
+      if (!metadataStillCurrent) {
+        throw new Error("Document metadata changed during export.");
+      }
+
       const {
         data: { jobId },
       } = await axiosInstance.post(
@@ -469,7 +503,6 @@ function EditDocumentPage() {
       case "bold":  ref.wrapSelection("**", "**"); break;
       case "italic": ref.wrapSelection("_", "_"); break;
       case "code":  ref.wrapSelection("```\n", "\n```"); break;
-      case "image": ref.insertAtCursor("![Alt text](url)"); break;
       case "h1":    ref.prependLinePrefix("# "); break;
       case "h2":    ref.prependLinePrefix("## "); break;
       case "h3":    ref.prependLinePrefix("### "); break;
@@ -632,7 +665,6 @@ function EditDocumentPage() {
               <ToolbarBtn onClick={() => handleFormat("bold")} title="Bold"><Bold className="size-4" /></ToolbarBtn>
               <ToolbarBtn onClick={() => handleFormat("italic")} title="Italic"><Italic className="size-4" /></ToolbarBtn>
               <ToolbarBtn onClick={() => handleFormat("code")} title="Code block"><Code className="size-4" /></ToolbarBtn>
-              <ToolbarBtn onClick={() => handleFormat("image")} title="Image (URL)"><Image className="size-4" /></ToolbarBtn>
             </div>
 
             <div className="flex items-center gap-0.5">
@@ -681,7 +713,7 @@ function EditDocumentPage() {
                 {previewHtml.trim() ? (
                   <div
                     className="max-w-3xl mx-auto reading-content"
-                    style={{ fontSize: 16, lineHeight: 1.75, fontFamily: "Inter, sans-serif" }}
+                    style={{ fontSize: 16, lineHeight: 1.75 }}
                     dangerouslySetInnerHTML={{
                       __html: formatMdContent(previewHtml),
                     }}

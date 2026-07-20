@@ -24,7 +24,7 @@ export default function useDocumentEditor(
     try {
       const { data } = await axiosInstance.get(
         `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks`,
-        { params: { all: true }, signal }
+        { signal }
       );
 
       const fetchedChunks = data.chunks || [];

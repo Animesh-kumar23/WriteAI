@@ -57,7 +57,7 @@ function Navbar() {
             className="transition-all duration-300 group-hover:scale-105 group-focus-visible:scale-105"
           />
           <span className="text-xl font-semibold text-gray-900 dark:text-slate-50 tracking-tight">
-            WriteAi
+            WriteAI
           </span>
         </Link>
 

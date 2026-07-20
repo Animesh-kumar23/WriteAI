@@ -58,7 +58,7 @@ function SearchModal({ isOpen, onClose, onNavigate }) {
           role="dialog"
           aria-modal="true"
           aria-label="Search documents"
-          className="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-xl shadow-2xl dark:shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200"
+          className="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-xl shadow-2xl dark:shadow-black/50 overflow-hidden animate-in duration-200"
         >
           {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
@@ -132,7 +132,7 @@ function SearchModal({ isOpen, onClose, onNavigate }) {
                       <button
                         key={match.order}
                         type="button"
-                        onClick={() => { onNavigate(doc.documentId, match.order); onClose(); }}
+                        onClick={() => { onNavigate(doc.documentId); onClose(); }}
                         className="w-full flex items-start gap-3 pl-14 pr-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left"
                       >
                         <p className="text-xs leading-relaxed line-clamp-2">
@@ -158,8 +158,6 @@ function SearchModal({ isOpen, onClose, onNavigate }) {
 
           {/* Footer hint */}
           <div className="px-4 py-2 border-t border-gray-50 dark:border-slate-700 flex items-center gap-3 text-xs text-gray-400 dark:text-slate-500">
-            <span><kbd className="font-mono bg-gray-100 dark:bg-slate-700 dark:text-slate-400 px-1 py-0.5 rounded">↑↓</kbd> navigate</span>
-            <span><kbd className="font-mono bg-gray-100 dark:bg-slate-700 dark:text-slate-400 px-1 py-0.5 rounded">↵</kbd> open</span>
             <span><kbd className="font-mono bg-gray-100 dark:bg-slate-700 dark:text-slate-400 px-1 py-0.5 rounded">Esc</kbd> close</span>
           </div>
         </div>

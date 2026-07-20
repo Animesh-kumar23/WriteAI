@@ -41,7 +41,6 @@ const documentSchema = new mongoose.Schema(
 
 // Index for faster queries
 documentSchema.index({ userId: 1 });
-documentSchema.index({ title: "text" }); // Enable text search on title
 
 const Document = mongoose.model("Document", documentSchema);
 module.exports = Document;

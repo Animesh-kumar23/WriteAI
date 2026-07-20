@@ -150,6 +150,13 @@ afterAll(async () => {
 });
 
 describe("WriteAI API integration", () => {
+  test("exposes a public health check", async () => {
+    const response = await request(app).get("/health");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: "ok" });
+  });
+
   test("cross-chunk edits retain destination versions and emit deleted-order tombstones", () => {
     const model = new DocumentModel([
       { order: 0, content: "abc", version: 2 },

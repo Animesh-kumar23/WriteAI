@@ -49,16 +49,9 @@ async function getDocumentById(req, res) {
       });
     }
 
-    const chunkCount = await DocumentChunk.countDocuments({
-      documentId,
-    });
-
     return res.status(200).json({
       message: "Document retrieved successfully!",
-      document: {
-        ...document.toObject(),
-        chunkCount,
-      },
+      document: document.toObject(),
     });
   } catch (error) {
     console.error("Error getting document:", error);
@@ -93,18 +86,9 @@ async function createDocument(req, res) {
 
     await createChunksForDocument(document._id, content);
 
-    const chunks = await DocumentChunk.find({
-      documentId: document._id,
-    })
-      .sort({ order: 1 })
-      .lean();
-
     return res.status(201).json({
       message: "Document created successfully!",
-      document: {
-        ...document.toObject(),
-        chunks,
-      },
+      document: document.toObject(),
     });
   } catch (error) {
     console.error("Error creating document:", error);
@@ -174,8 +158,6 @@ async function updateDocument(req, res) {
 async function getDocumentChunks(req, res) {
   try {
     const { documentId } = req.params;
-    const { all } = req.query;
-
     const document = await Document.findById(documentId);
 
     if (!document) {
@@ -190,42 +172,13 @@ async function getDocumentChunks(req, res) {
       });
     }
 
-    if (all === "true") {
-      const chunks = await DocumentChunk.find({
-        documentId,
-      })
-        .sort({ order: 1 })
-        .lean();
-
-      return res.status(200).json({
-        chunks,
-        total: chunks.length,
-        hasMore: false,
-      });
-    }
-
-    const start = Math.max(parseInt(req.query.start) || 0, 0);
-    const limit = Math.min(parseInt(req.query.limit) || 4, 50);
-
     const chunks = await DocumentChunk.find({
       documentId,
-      order: {
-        $gte: start,
-        $lt: start + limit,
-      },
     })
       .sort({ order: 1 })
       .lean();
 
-    const total = await DocumentChunk.countDocuments({
-      documentId,
-    });
-
-    return res.status(200).json({
-      chunks,
-      total,
-      hasMore: start + limit < total,
-    });
+    return res.status(200).json({ chunks });
   } catch (error) {
     console.error("Error getting chunks:", error);
 
@@ -501,6 +454,7 @@ async function deleteAllDocumentChunks(req, res) {
     }
 
     await DocumentChunk.deleteMany({ documentId });
+    await Document.findByIdAndUpdate(documentId, { wordCount: 0 });
 
     return res.status(200).json({
       message: "Chunks deleted successfully!",

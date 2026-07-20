@@ -103,11 +103,6 @@ class DocumentModel {
     return deleted.sort((a, b) => a.order - b.order);
   }
 
-  markChunkSaved(order) {
-    const chunk = this.chunks.find((it) => it.order === order);
-    if (chunk) chunk.dirty = false;
-  }
-
   // Only clears dirty if the chunk's content matches what was actually saved.
   // Prevents a race where a concurrent edit rebuilds this.chunks during an
   // in-flight save, causing markChunkSaved to clear dirty on the new,

@@ -169,7 +169,7 @@ function CreateDocumentModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="create-document-modal-title"
-          className="max-w-md w-full bg-white dark:bg-slate-800 text-left rounded-xl p-5 md:p-6 shadow-xl dark:shadow-black/40 relative animate-in zoom-in-95 duration-200"
+          className="max-w-md w-full bg-white dark:bg-slate-800 text-left rounded-xl p-5 md:p-6 shadow-xl dark:shadow-black/40 relative animate-in duration-200"
         >
           {/* Header */}
           <header className="mb-4 md:mb-5 flex justify-between items-start gap-x-4">

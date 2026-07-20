@@ -10,7 +10,7 @@
 [![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
-WriteAI is a single-writer document editor with a Google Gemini writing assistant. You draft in a Markdown editor, the AI streams text into the document token by token, and everything is stored as ordered chunks so autosave only writes the parts that changed.
+WriteAI is a single-writer document editor with a Google Gemini writing assistant. You draft in a Markdown editor, AI responses arrive incrementally over HTTP, and everything is stored as ordered chunks so autosave only writes the parts that changed.
 
 **Live:** Vercel — [writeai-teal.vercel.app](https://writeai-teal.vercel.app) · AWS EC2 — [13.201.5.159](http://13.201.5.159/)
 
@@ -27,13 +27,13 @@ Sign in with the shared demo account — no registration required:
 
 - **Email/password accounts.** Registration and login with bcrypt-hashed passwords and JWT sessions. The API accepts either an HTTP-only cookie or an `Authorization: Bearer` token, so it works from browsers that drop cross-site cookies.
 - **Document dashboard.** Create documents blank or from an AI prompt, rename, delete, and sort by last edited, created date, or title.
-- **Markdown editor.** A CodeMirror 6 editor with editor-only and split-preview modes, a formatting toolbar (headings, bold, italic, code block, image), fullscreen, and live word / character / chunk counts.
-- **Three AI actions.** *Generate Draft* writes a fresh draft from the title and description, *Rewrite Document* reworks the full current document, and *Custom Prompt* continues the document from your own instruction. Output streams into the editor as it is produced.
+- **Markdown editor.** A CodeMirror 6 editor with editor-only and split-preview modes, a formatting toolbar (headings, bold, italic, code block), fullscreen, and live word / character / chunk counts.
+- **Three AI actions.** *Generate Draft* writes a fresh draft from the title and description, *Rewrite Document* reworks the full current document, and *Custom Prompt* continues the document from your own instruction. Custom Prompt appears incrementally; replacements are applied only after generation completes successfully.
 - **Autosave that keeps up with the AI.** Edits are debounced and saved automatically; only changed chunks are written. A status pill reports saved / saving / unsaved / failed, `Ctrl`/`Cmd`+`S` saves on demand, and leaving with unsaved work prompts a confirmation.
 - **Conflict-aware saving.** If another tab has already changed the same chunk, the save is rejected and you choose whether to keep your version or reload the server's.
 - **PDF import.** Upload a PDF to replace a document's contents; the extracted text is re-chunked in place.
 - **Background PDF export.** Export is queued and processed off the request path; the editor polls until the file is ready, then downloads it.
-- **Full-text search.** Search across document titles and body content with fuzzy and prefix matching plus highlighted snippets, open from anywhere with `Ctrl`/`Cmd`+`K`, and jump straight to the matching chunk.
+- **Full-text search.** Search across document titles and body content with fuzzy and prefix matching plus highlighted snippets, open from anywhere with `Ctrl`/`Cmd`+`K`.
 
 ## Screenshots
 
@@ -76,13 +76,13 @@ Sign in with the shared demo account — no registration required:
 
 ## Architecture
 
-**Documents are ordered chunks.** A `Document` holds metadata (title, subtitle, word count); its body lives in `DocumentChunk` records keyed by `(documentId, order)`. Content is split at roughly 4,000 characters on paragraph boundaries, and each chunk carries its own `version` counter. Reading a document reassembles the chunks in `order`; the editor keeps the same shape in memory through a client-side `DocumentModel` that re-splits chunks as they grow past the limit.
+**Documents are ordered chunks.** A `Document` holds metadata (title, subtitle, word count); its body lives in `DocumentChunk` records keyed by `(documentId, order)`. Imported content is split every 4,000 characters. During live editing, the client waits until 6,000 characters and prefers a nearby paragraph boundary. Each chunk carries its own `version` counter, and reading a document reassembles the chunks in `order`.
 
 **Autosave writes only what changed.** As you type, the `DocumentModel` marks the touched chunks dirty. A debounced save collects the dirty set and sends it to `PATCH /api/documents/:id/chunks/batch` — unchanged chunks are never transmitted, so save payloads and write volume stay flat as a document grows. The dirty flag for a chunk is cleared only if its content still matches what was sent, so an edit made during an in-flight save is never lost.
 
 **Conflicts are detected per chunk.** Each dirty chunk is sent with the client's last-known `version`. The server updates each chunk with a compare-and-swap keyed on that version. If every chunk matches, the batch commits; if any chunk's version has moved on, the batch returns `409` with the current server copies of the conflicting chunks, and the editor resolves it.
 
-**AI generation streams over HTTP.** The editor calls `POST /api/ai/stream` with `fetch` and reads `response.body` through a `ReadableStream` reader, inserting each decoded piece of text at the cursor as it arrives. The create-a-document flow instead calls `POST /api/ai/generate-content`, which returns the finished draft in one response.
+**AI generation streams over HTTP.** The editor calls `POST /api/ai/stream` with `fetch` and reads `response.body` through a `ReadableStream` reader. Custom Prompt inserts each decoded piece at the end as it arrives. Generate Draft and Rewrite Document buffer the response and replace the saved body only after the stream completes successfully. The create-a-document flow instead calls `POST /api/ai/generate-content`, which returns the finished draft in one response.
 
 ## Engineering notes
 
@@ -100,7 +100,7 @@ Every `DocumentChunk` has an integer `version`. A batch save carries a `clientVe
 }
 ```
 
-The `version` in the filter is what makes the write conditional: the update matches only if nobody has changed that chunk since the client last read it. When `matchedCount` is short, the server fetches the current state of the sent orders, separates the chunks that actually saved from the ones that didn't, and returns `409` with the conflicting server chunks so the client can show them.
+The `version` in the filter is what makes the write conditional: the update matches only if nobody has changed that chunk since the client last read it. After the batch, the server reads the affected orders back, identifies saved and conflicting chunks from their current version and content, and returns `409` with both the conflicts and any partial successes.
 
 Doing this **per chunk rather than per document** is the point. A single document-level version would treat every concurrent save as a conflict, even edits to completely unrelated paragraphs — including the common case of the AI streaming into one region while autosave flushes another. With a version per chunk, edits to *different* chunks each match their own filter and merge cleanly; only two writes racing on the *same* chunk actually conflict. PDF import leans on the same mechanism: it advances the version of every existing order it replaces, so any editor opened before the import becomes correctly stale on its next save.
 
@@ -131,7 +131,7 @@ That token check closes the classic expiry race: if request A's lock times out a
 
 ### Streaming
 
-Generation into the editor is streamed token by token over **chunked HTTP transfer**, not Server-Sent Events. The server responds with `Content-Type: text/plain` and `res.write()`s each piece of model output as it is produced. The client reads the response body incrementally:
+Generation is delivered incrementally over **chunked HTTP transfer**, not Server-Sent Events. The server responds with `Content-Type: text/plain` and `res.write()`s each piece of model output as it is produced. The client reads the response body incrementally:
 
 ```js
 const reader = response.body.getReader();
@@ -218,7 +218,6 @@ docker compose up --build  # app on http://localhost:3000
 | Variable | Required | Default | Purpose |
 |---|:---:|---|---|
 | `VITE_API_BASE_URL` | ✅ | — | Backend base URL, e.g. `http://localhost:3000` |
-| `VITE_SHOW_CONTACT_INFO` | — | `false` | Set to `true` to enable the footer contact links |
 
 ### Atlas Search indexes
 
