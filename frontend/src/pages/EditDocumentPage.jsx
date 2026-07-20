@@ -3,30 +3,37 @@ import CustomPromptModal from "../components/edit-document/CustomPromptModal";
 import AISettingsModal from "../components/edit-document/AISettingsModal";
 import ConflictModal from "../components/edit-document/ConflictModal";
 import SearchModal from "../components/SearchModal";
+import ImportButton from "../components/edit-document/ImportButton";
+import CodeMirrorEditor from "../components/edit-document/CodeMirrorEditor";
 import Modal from "../components/ui/Modal";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useBlocker } from "react-router";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
+import { formatMdContent } from "../utils/helpers";
 import {
+  AlignLeft,
   ArrowLeft,
+  Bold,
   ChevronDown,
-  Edit,
+  Code,
+  Columns2,
   FileCode,
   FileDown,
   FileText,
-  NotebookText,
+  Heading1,
+  Heading2,
+  Heading3,
+  Image,
+  Italic,
+  Maximize,
+  Minimize,
   Save,
   Search,
+  Sparkles,
 } from "lucide-react";
-import {
-  DocumentDetailsTab,
-  Button,
-  ContentEditorTab,
-  Dropdown,
-  DropdownItem,
-} from "../components";
+import { Button, Dropdown, DropdownItem } from "../components";
 
 import useDocumentEditor from "../hooks/useDocumentEditor";
 
@@ -50,13 +57,26 @@ function LeaveConfirmModal({ isOpen, onStay, onLeave }) {
   );
 }
 
+function ToolbarBtn({ onClick, title, active, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`p-1.5 rounded transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-50 ${
+        active ? "bg-slate-200 dark:bg-slate-600 text-slate-900 dark:text-slate-50" : ""
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function EditDocumentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [document, setDocument] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved");
-  const [activeTab, setActiveTab] = useState("editor");
-  const [isUploading, setIsUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
@@ -64,6 +84,8 @@ function EditDocumentPage() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [conflictData, setConflictData] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState("mde");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [aiConfig, setAiConfig] = useState({
     style: "Professional",
     tone: [],
@@ -107,7 +129,6 @@ function EditDocumentPage() {
     handleDocumentEdit(from, to, insertText);
   };
 
-  const fileInputRef = useRef(null);
   const isStreamingRef = useRef(false);
   const abortControllerRef = useRef(null);
   const editorRef = useRef(null);
@@ -164,7 +185,6 @@ function EditDocumentPage() {
       const payload = {
         title: documentToSave.title,
         subtitle: documentToSave.subtitle,
-        coverImage: documentToSave.coverImage,
       };
       await axiosInstance.put(
         `${API_ENDPOINTS.DOCUMENTS.UPDATE_CONTENT}/${documentId}`,
@@ -210,44 +230,6 @@ function EditDocumentPage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
-
-  const handleCoverImgUpload = async (event) => {
-    const file = event.target.files[0];
-
-    if (!file) {
-      toast.error("Please select an image file first.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("coverImage", file);
-
-    setIsUploading(true);
-
-    try {
-      const { data } = await axiosInstance.put(
-        `${API_ENDPOINTS.DOCUMENTS.UPDATE_COVER}/${documentId}/cover`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      setDocument(data.document);
-
-      toast.success("Cover image updated successfully!");
-    } catch (error) {
-      console.error("Error uploading cover image:", error);
-
-      toast.error("Failed to upload cover image! Please try again.", {
-        duration: 5000,
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleCustomPromptSubmit = async () => {
     if (!customPrompt.trim()) return;
@@ -454,6 +436,33 @@ function EditDocumentPage() {
   const handleExportPDF = () => handleExport("pdf");
   const handleExportDocx = () => handleExport("docx");
 
+  const stats = useMemo(() => {
+    const text = chunks.map((it) => it.content).join("");
+    return {
+      words: text.split(/\s+/).filter(Boolean).length,
+      characters: text.length,
+    };
+  }, [chunks]);
+
+  const previewHtml = useMemo(
+    () => chunks.map((it) => it.content).join(""),
+    [chunks]
+  );
+
+  const handleFormat = (type) => {
+    const ref = editorRef.current;
+    if (!ref) return;
+    switch (type) {
+      case "bold":  ref.wrapSelection("**", "**"); break;
+      case "italic": ref.wrapSelection("_", "_"); break;
+      case "code":  ref.wrapSelection("```\n", "\n```"); break;
+      case "image": ref.insertAtCursor("![Alt text](url)"); break;
+      case "h1":    ref.prependLinePrefix("# "); break;
+      case "h2":    ref.prependLinePrefix("## "); break;
+      case "h3":    ref.prependLinePrefix("### "); break;
+    }
+  };
+
   if (
     isLoading ||
     !document
@@ -470,7 +479,11 @@ function EditDocumentPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-display flex">
-      <main className="flex-1 h-full flex flex-col">
+      <main
+        className={`flex-1 h-full flex flex-col ${
+          isFullscreen ? "fixed inset-0 z-50 overflow-hidden bg-white dark:bg-slate-900" : ""
+        }`}
+      >
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 sm:p-4 sticky top-0 z-10">
         <div className="flex justify-between items-center gap-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -483,24 +496,45 @@ function EditDocumentPage() {
               <ArrowLeft className="size-5 text-slate-700 dark:text-slate-300" />
             </button>
 
-            <input
-              type="text"
-              name="title"
-              value={document.title || ""}
-              onChange={handleEditDocument}
-              onBlur={() => {
-                if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  event.currentTarget.blur();
-                }
-              }}
-              placeholder="Untitled Document"
-              aria-label="Document title"
-              className="flex-1 min-w-0 bg-transparent text-slate-900 dark:text-slate-50 text-base sm:text-lg font-semibold truncate px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <div className="flex-1 min-w-0 flex flex-col">
+              <input
+                type="text"
+                name="title"
+                value={document.title || ""}
+                onChange={handleEditDocument}
+                onBlur={() => {
+                  if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder="Untitled Document"
+                aria-label="Document title"
+                className="w-full min-w-0 bg-transparent text-slate-900 dark:text-slate-50 text-base sm:text-lg font-semibold truncate px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+              />
+
+              <input
+                type="text"
+                name="subtitle"
+                value={document.subtitle || ""}
+                onChange={handleEditDocument}
+                onBlur={() => {
+                  if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder="Add a subtitle..."
+                aria-label="Document subtitle"
+                className="w-full min-w-0 bg-transparent text-slate-500 dark:text-slate-400 text-xs sm:text-sm truncate px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -556,65 +590,139 @@ function EditDocumentPage() {
             </Button>
           </div>
         </div>
-
-          <nav className="flex items-center gap-x-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mt-3 w-fit">
-            <button
-              type="button"
-              onClick={() => {
-                if (isGenerating) return;
-                setActiveTab("editor");
-              }}
-              className={`${activeTab === "editor"
-                ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
-            >
-              <Edit className="size-4" />
-              <span>Editor</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("details")}
-              className={`${activeTab === "details"
-                ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
-            >
-              <NotebookText className="size-4" />
-              <span>Details</span>
-            </button>
-          </nav>
         </header>
 
-        <section className="w-full flex-1 overflow-hidden">
-          {activeTab === "editor" ? (
-            <ContentEditorTab
-              chunks={chunks}
-              initialContent={initialContent}
-              editorRef={editorRef}
-              isGenerating={isGenerating}
-              onAIAction={handleAIAction}
-              onCancelGeneration={handleCancelGeneration}
-              onOpenAISettings={() => setIsAISettingsOpen(true)}
-              onDocumentEdit={handleEditorEdit}
-              documentId={documentId}
-              onImportComplete={() => {
-                // Re-fetch chunks in place instead of hard-reloading the page.
-                reloadChunks();
-                setSaveStatus("saved");
-              }}
-            />
-          ) : (
-            <DocumentDetailsTab
-              document={document}
-              onEditDocument={handleEditDocument}
-              fileInputRef={fileInputRef}
-              isUploading={isUploading}
-              onCoverImageUpload={handleCoverImgUpload}
-            />
-          )}
-        </section>
+        <article className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+          {/* AI Actions + import row */}
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shadow-sm shrink-0">
+            <div className="px-4 sm:px-6 lg:px-8 py-3 flex justify-end items-center gap-2">
+              <ImportButton
+                documentId={documentId}
+                onImportComplete={() => {
+                  // Re-fetch chunks in place instead of hard-reloading the page.
+                  reloadChunks();
+                  setSaveStatus("saved");
+                }}
+              />
+
+              <Dropdown
+                trigger={
+                  isGenerating ? (
+                    <Button
+                      type="button"
+                      onClick={handleCancelGeneration}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      Stop
+                    </Button>
+                  ) : (
+                    <Button type="button" icon={Sparkles} size="sm">
+                      <span className="flex items-center gap-2">
+                        AI Actions
+                        <ChevronDown className="size-4" />
+                      </span>
+                    </Button>
+                  )
+                }
+              >
+                <DropdownItem onClick={() => handleAIAction("generate")}>Generate Draft</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("continue")}>Continue Writing</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("rewrite")}>Rewrite</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("expand")}>Expand</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("shorten")}>Shorten</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("grammar")}>Fix Grammar</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("simplify")}>Simplify</DropdownItem>
+                <DropdownItem onClick={() => setIsAISettingsOpen(true)}>Change AI Settings</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("custom")}>Custom Prompt</DropdownItem>
+              </Dropdown>
+            </div>
+          </div>
+
+          {/* Formatting toolbar */}
+          <div className="border-b border-slate-100 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between gap-2 shrink-0 bg-white dark:bg-slate-900">
+            <div className="flex items-center gap-0.5">
+              <ToolbarBtn onClick={() => handleFormat("h1")} title="Heading 1"><Heading1 className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("h2")} title="Heading 2"><Heading2 className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("h3")} title="Heading 3"><Heading3 className="size-4" /></ToolbarBtn>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1 shrink-0" />
+
+              <ToolbarBtn onClick={() => handleFormat("bold")} title="Bold"><Bold className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("italic")} title="Italic"><Italic className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("code")} title="Code block"><Code className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("image")} title="Image (URL)"><Image className="size-4" /></ToolbarBtn>
+            </div>
+
+            <div className="flex items-center gap-0.5">
+              <ToolbarBtn onClick={() => setEditorMode("mde")} title="Editor only" active={editorMode === "mde"}>
+                <AlignLeft className="size-4" />
+              </ToolbarBtn>
+              <ToolbarBtn onClick={() => setEditorMode("split")} title="Split: editor + preview" active={editorMode === "split"}>
+                <Columns2 className="size-4" />
+              </ToolbarBtn>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1 shrink-0" />
+
+              <ToolbarBtn onClick={() => setIsFullscreen((v) => !v)} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+                {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+              </ToolbarBtn>
+            </div>
+          </div>
+
+          {/* Editor + optional preview */}
+          <section
+            className={`flex-1 overflow-hidden flex ${
+              editorMode === "split" ? "flex-row" : "flex-col"
+            }`}
+          >
+            {/* Editor pane */}
+            <div
+              className={`${
+                editorMode === "split"
+                  ? "w-1/2 border-r border-slate-200 dark:border-slate-700"
+                  : "w-full"
+              } overflow-y-auto px-4 sm:px-6 lg:px-8 py-6`}
+            >
+              <div className="max-w-5xl mx-auto">
+                <CodeMirrorEditor
+                  key={initialContent}
+                  ref={editorRef}
+                  initialContent={initialContent}
+                  onDocumentEdit={handleEditorEdit}
+                />
+              </div>
+            </div>
+
+            {/* Preview pane (split mode) */}
+            {editorMode === "split" && (
+              <div className="w-1/2 overflow-y-auto px-6 sm:px-8 py-6 bg-slate-50 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700">
+                {previewHtml.trim() ? (
+                  <div
+                    className="max-w-3xl mx-auto reading-content"
+                    style={{ fontSize: 16, lineHeight: 1.75, fontFamily: "Inter, sans-serif" }}
+                    dangerouslySetInnerHTML={{
+                      __html: formatMdContent(previewHtml),
+                    }}
+                  />
+                ) : (
+                  <p className="text-slate-400 dark:text-slate-500 text-sm text-center mt-12">
+                    Preview will appear here as you write.
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Stats footer */}
+          <footer className="text-slate-500 dark:text-slate-400 text-sm border-t border-slate-100 dark:border-slate-800 px-6 py-4 shrink-0 bg-white dark:bg-slate-900">
+            <div className="flex items-center gap-6">
+              <span>Words: <strong className="text-slate-700 dark:text-slate-200">{stats.words}</strong></span>
+              <span>Characters: <strong className="text-slate-700 dark:text-slate-200">{stats.characters}</strong></span>
+              <span>Chunks: <strong className="text-slate-700 dark:text-slate-200">{chunks.length}</strong></span>
+            </div>
+          </footer>
+        </article>
 
         <AISettingsModal
           isOpen={isAISettingsOpen}

@@ -18,11 +18,6 @@ export { default as CreateDocumentModal } from "./CreateDocumentModal";
 // document page component
 export { default as DocumentView } from "./document-view/DocumentView";
 
-// Edit document page components
-export { default as SectionsSidebar } from "./edit-document/SectionsSidebar";
-export { default as ContentEditorTab } from "./edit-document/ContentEditorTab";
-export { default as DocumentDetailsTab } from "./edit-document/DocumentDetailsTab";
-
 // Others
 export { default as ProfileMenu } from "./ProfileMenu";
 export { default as Dropdown, DropdownItem } from "./ui/Dropdown";
