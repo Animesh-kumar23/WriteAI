@@ -191,7 +191,7 @@ pnpm dev                  # starts on http://localhost:5173
 
 `backend/src/server.js` connects to MongoDB and Redis, starts the BullMQ export worker, and then begins serving the API — the worker runs inside the same process, so `pnpm dev` is all you need for exports to be processed.
 
-**Run the whole stack with Docker** *(on the `aws-deploy` branch)*: a root `.env.example` and `docker-compose.yml` bring up the app, MongoDB, and Redis together:
+**Run the whole stack with Docker.** The `Dockerfile` builds the image on either branch; on the `aws-deploy` branch a root `.env.example` and `docker-compose.yml` add a one-command stack for the app, MongoDB, and Redis together:
 
 ```bash
 cp .env.example .env       # root env used by Compose
