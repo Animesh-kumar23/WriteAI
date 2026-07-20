@@ -57,7 +57,7 @@ export default function useDocumentEditor(
     const capturedEpoch = saveEpochRef.current;
     const dirty = modelRef.current.getDirtyChunks();
 
-    if (dirty.length === 0) return;
+    if (dirty.length === 0) return true;
 
     // Snapshot content now so we can detect concurrent edits after the
     // async save completes (normalizeAndSplit rebuilds this.chunks in-place,
@@ -88,7 +88,7 @@ export default function useDocumentEditor(
           }
         );
 
-        if (capturedEpoch !== saveEpochRef.current) return;
+        if (capturedEpoch !== saveEpochRef.current) return false;
 
         // Update tracked versions for successfully saved chunks
         batch.forEach(({ order, version }) => {
@@ -110,14 +110,17 @@ export default function useDocumentEditor(
       if (modelRef.current.getDirtyChunks().length === 0) {
         onAllSaved();
       }
+
+      return true;
     } catch (error) {
       if (error?.response?.status === 409 && error.response.data?.conflict) {
         onConflict(error.response.data.serverChunks ?? []);
-        return;
+        return false;
       }
 
       console.error(error);
       toast.error("Failed to save document");
+      return false;
     }
   };
 
@@ -163,21 +166,19 @@ export default function useDocumentEditor(
 
   // After a conflict: user chose "keep mine" — strip version from conflicted orders
   // so the next save goes through without a version filter (force-overwrite).
-  const keepMyVersion = (conflictedOrders) => {
+  const keepMyVersion = async (conflictedOrders) => {
     conflictedOrders.forEach((order) => {
       modelRef.current.clearChunkVersion(order);
     });
-    saveDirtyChunks();
+
+    // Force-overwrite once, then reload the new server version so later saves
+    // use normal conflict detection again.
+    const saved = await saveDirtyChunks();
+    if (saved) await loadAllChunks();
   };
 
-  // After a conflict: user chose "use server version" — reset doc to server content.
-  const useServerVersion = (serverChunks) => {
-    const joined = serverChunks
-      .sort((a, b) => a.order - b.order)
-      .map((c) => c.content)
-      .join("");
-    resetDocument(joined);
-  };
+  // After a conflict: user chose "use server version" — reload the complete document.
+  const useServerVersion = () => loadAllChunks();
 
   const reloadChunks = useCallback(() => loadAllChunks(), [loadAllChunks]);
 

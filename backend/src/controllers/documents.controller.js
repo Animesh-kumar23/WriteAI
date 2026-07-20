@@ -479,7 +479,9 @@ async function batchUpdateChunks(req, res) {
       const unversionedOps = unversionedChunks.map(({ order, content }) => ({
         updateOne: {
           filter: { documentId, order },
-          update: { $set: { content } },
+          // A forced overwrite still advances the version. Other open tabs
+          // must become stale after the user chooses "keep my version".
+          update: { $set: { content }, $inc: { version: 1 } },
           upsert: true,
         },
       }));

@@ -70,6 +70,16 @@ async function getFullDocumentContent(documentId) {
 async function replaceDocumentChunks(documentId, content = "") {
   const chunks = splitIntoChunks(content);
 
+  // Import replaces the whole document. Move each existing order to its next
+  // version so editors opened before the import receive a 409 on stale saves.
+  const existingChunks = await DocumentChunk.find(
+    { documentId },
+    { order: 1, version: 1 }
+  ).lean();
+  const versionsByOrder = new Map(
+    existingChunks.map((chunk) => [chunk.order, chunk.version])
+  );
+
   await DocumentChunk.deleteMany({ documentId });
 
   await DocumentChunk.insertMany(
@@ -77,6 +87,9 @@ async function replaceDocumentChunks(documentId, content = "") {
       documentId,
       order: it.order,
       content: it.content,
+      version: versionsByOrder.has(it.order)
+        ? versionsByOrder.get(it.order) + 1
+        : 0,
     }))
   );
 
