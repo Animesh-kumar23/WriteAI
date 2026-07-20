@@ -424,7 +424,18 @@ describe("WriteAI API integration", () => {
           chunkMatches: [expect.objectContaining({ order: 0 })],
         }),
       ]);
+      const titlePipeline = titleSearch.mock.calls[0][0];
       const chunkPipeline = chunkSearch.mock.calls[0][0];
+      expect(titlePipeline[0].$search.compound.should[1].wildcard).toMatchObject({
+        query: "quasarneedle*",
+        path: ["title", "subtitle"],
+        allowAnalyzedField: true,
+      });
+      expect(chunkPipeline[0].$search.compound.should[1].wildcard).toMatchObject({
+        query: "quasarneedle*",
+        path: "content",
+        allowAnalyzedField: true,
+      });
       expect(chunkPipeline[1].$match.documentId.$in.map(String)).toContain(document._id.toString());
     } finally {
       titleSearch.mockRestore();
