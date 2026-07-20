@@ -1,7 +1,6 @@
 const { Worker } = require("bullmq");
 const { bullmqConnection, redisClient } = require("../configs/redis");
 const { generatePdfBuffer } = require("../utils/pdf.generator");
-const { generateDocx } = require("../utils/docx.generator");
 const { getFullDocumentContent } = require("../utils/documentChunks");
 const Document = require("../models/document");
 const { EXPORT_QUEUE_NAME, EXPORT_QUEUE_PREFIX } = require("../queues/export.queue");
@@ -33,18 +32,9 @@ function createExportWorker() {
       };
 
       const safeName = document.title.replace(/[^a-zA-Z0-9]/g, "_");
-      let buffer, contentType, filename;
-
-      if (format === "pdf") {
-        buffer = await generatePdfBuffer(exportDoc);
-        contentType = "application/pdf";
-        filename = `${safeName}.pdf`;
-      } else {
-        buffer = await generateDocx(exportDoc);
-        contentType =
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        filename = `${safeName}.docx`;
-      }
+      const buffer = await generatePdfBuffer(exportDoc);
+      const contentType = "application/pdf";
+      const filename = `${safeName}.pdf`;
 
       await redisClient.set(`export:${job.id}`, buffer.toString("base64"), {
         EX: RESULT_TTL_SECONDS,

@@ -2,14 +2,12 @@ const Document = require("../models/document");
 const { exportQueue } = require("../queues/export.queue");
 const { redisClient } = require("../configs/redis");
 
-const VALID_FORMATS = new Set(["pdf", "docx"]);
-
 async function requestExport(req, res) {
   try {
     const { documentId, format } = req.params;
 
-    if (!VALID_FORMATS.has(format)) {
-      return res.status(400).json({ error: "Format must be pdf or docx" });
+    if (format !== "pdf") {
+      return res.status(400).json({ error: "Format must be pdf" });
     }
 
     if (!exportQueue) {
