@@ -87,7 +87,7 @@ function EditDocumentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [document, setDocument] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("saved");
+  const [metadataSaveStatus, setMetadataSaveStatus] = useState("saved");
   const [isExporting, setIsExporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
@@ -99,16 +99,10 @@ function EditDocumentPage() {
   const { documentId } = useParams();
   const navigate = useNavigate();
 
-  const isDirty = saveStatus !== "saved";
-
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname
-  );
-
   const {
     chunks,
     initialContent,
+    saveStatus: contentSaveStatus,
     handleDocumentEdit,
     resetDocument,
     reloadChunks,
@@ -118,9 +112,8 @@ function EditDocumentPage() {
     useServerVersion: acceptServerVersion,
   } = useDocumentEditor(
     documentId,
-    () => setSaveStatus("saved"),
+    () => {},
     (serverChunks) => {
-      setSaveStatus("dirty");
       const keepLocal = window.confirm(
         "Edit conflict detected.\n\nChoose OK to keep your version, or Cancel to use the server version."
       );
@@ -128,13 +121,26 @@ function EditDocumentPage() {
       if (keepLocal) {
         void keepMyVersion(serverChunks.map((chunk) => chunk.order));
       } else {
-        void acceptServerVersion().then(() => setSaveStatus("saved"));
+        void acceptServerVersion();
       }
     }
   );
 
+  const saveStatus = useMemo(() => {
+    if (metadataSaveStatus === "error" || contentSaveStatus === "error") return "error";
+    if (metadataSaveStatus === "saving" || contentSaveStatus === "saving") return "saving";
+    if (metadataSaveStatus === "dirty" || contentSaveStatus === "dirty") return "dirty";
+    return "saved";
+  }, [metadataSaveStatus, contentSaveStatus]);
+
+  const isDirty = saveStatus !== "saved";
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
   const handleEditorEdit = (from, to, insertText) => {
-    setSaveStatus("dirty");
     handleDocumentEdit(from, to, insertText);
   };
 
@@ -142,6 +148,8 @@ function EditDocumentPage() {
   const abortControllerRef = useRef(null);
   const editorRef = useRef(null);
   const saveLockRef = useRef(false);
+  const documentRef = useRef(document);
+  documentRef.current = document;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -153,6 +161,7 @@ function EditDocumentPage() {
         );
 
         setDocument(data.document);
+        setMetadataSaveStatus("saved");
       } catch (error) {
         if (error?.name === "CanceledError" || error?.code === "ERR_CANCELED") return;
         console.error("Error fetching document:", error);
@@ -178,7 +187,7 @@ function EditDocumentPage() {
       ...prev,
       [name]: value,
     }));
-    setSaveStatus("dirty");
+    setMetadataSaveStatus("dirty");
   };
 
   const handleSaveChanges = async (documentToSave = document, showToast = true) => {
@@ -188,24 +197,33 @@ function EditDocumentPage() {
     saveLockRef.current = true;
 
     setIsSaving(true);
-    setSaveStatus("saving");
+    setMetadataSaveStatus("saving");
+
+    const metadataSnapshot = {
+      title: documentToSave.title,
+      subtitle: documentToSave.subtitle,
+    };
 
     try {
-      const payload = {
-        title: documentToSave.title,
-        subtitle: documentToSave.subtitle,
-      };
-      await axiosInstance.put(
-        `${API_ENDPOINTS.DOCUMENTS.UPDATE_CONTENT}/${documentId}`,
-        payload
-      );
-      setSaveStatus("saved");
-      if (showToast) {
+      const [, contentSaved] = await Promise.all([
+        axiosInstance.put(
+          `${API_ENDPOINTS.DOCUMENTS.UPDATE_CONTENT}/${documentId}`,
+          metadataSnapshot
+        ),
+        flushSave(),
+      ]);
+      const currentDocument = documentRef.current;
+      const metadataStillCurrent =
+        currentDocument?.title === metadataSnapshot.title &&
+        currentDocument?.subtitle === metadataSnapshot.subtitle;
+
+      setMetadataSaveStatus(metadataStillCurrent ? "saved" : "dirty");
+      if (showToast && contentSaved && metadataStillCurrent) {
         toast.success("Changes saved successfully!");
       }
     } catch (error) {
       console.error("Error saving document:", error);
-      setSaveStatus("error");
+      setMetadataSaveStatus("error");
       toast.error("Failed to save changes! Please try again.", {
         duration: 5000,
       });
@@ -251,7 +269,6 @@ function EditDocumentPage() {
 
     isStreamingRef.current = false;
     setIsGenerating(false);
-    setSaveStatus("dirty");
 
     toast.success("Generation stopped");
   };
@@ -290,11 +307,10 @@ function EditDocumentPage() {
   setIsGenerating(true);
   isStreamingRef.current = true;
   setIsStreaming(true);
-  setSaveStatus("dirty");
 
   const actionLabels = {
     generate: "Generating draft...",
-    rewrite: "Rewriting content...",
+    rewrite: "Rewriting document...",
     custom: "Writing with custom prompt...",
   };
 
@@ -314,7 +330,6 @@ function EditDocumentPage() {
 
     if (isReplaceAction) {
       resetDocument("");
-      setSaveStatus("dirty");
 
       await axiosInstance.delete(
         `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks`
@@ -378,7 +393,7 @@ function EditDocumentPage() {
     isStreamingRef.current = false;
     setIsStreaming(false);
     setIsGenerating(false);
-    flushSave();
+    await flushSave();
   }
 };
 
@@ -577,7 +592,6 @@ function EditDocumentPage() {
                 onImportComplete={() => {
                   // Re-fetch chunks in place instead of hard-reloading the page.
                   reloadChunks();
-                  setSaveStatus("saved");
                 }}
               />
 
@@ -593,7 +607,7 @@ function EditDocumentPage() {
                   <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute right-0 z-20 overflow-hidden">
                     {[
                       ["generate", "Generate Draft"],
-                      ["rewrite", "Rewrite Selection"],
+                      ["rewrite", "Rewrite Document"],
                       ["custom", "Custom Prompt"],
                     ].map(([action, label]) => (
                       <button key={action} type="button" onClick={() => handleAIAction(action)} className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700">

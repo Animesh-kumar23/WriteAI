@@ -11,11 +11,13 @@ export default function useDocumentEditor(
 ) {
   const [chunks, setChunks] = useState([]);
   const [initialContent, setInitialContent] = useState("");
+  const [saveStatus, setSaveStatus] = useState("saved");
 
   const modelRef = useRef(new DocumentModel());
   const globalSaveTimerRef = useRef(null);
   const isStreamingRef = useRef(false);
   const saveEpochRef = useRef(0);
+  const saveInFlightRef = useRef(null);
 
   const loadAllChunks = useCallback(async (signal) => {
     try {
@@ -30,6 +32,7 @@ export default function useDocumentEditor(
 
       setChunks(modelRef.current.getChunks());
       setInitialContent(modelRef.current.getFullText());
+      setSaveStatus("saved");
     } catch (error) {
       if (axiosInstance.isCancel?.(error) || error?.name === "CanceledError" || error?.code === "ERR_CANCELED") {
         return;
@@ -53,26 +56,59 @@ export default function useDocumentEditor(
     };
   }, [documentId, loadAllChunks]);
 
-  const saveDirtyChunks = async () => {
+  const performSave = async () => {
     const capturedEpoch = saveEpochRef.current;
     const dirty = modelRef.current.getDirtyChunks();
+    const deleted = modelRef.current.getDeletedChunks();
 
-    if (dirty.length === 0) return true;
+    if (dirty.length === 0 && deleted.length === 0) {
+      setSaveStatus("saved");
+      onAllSaved();
+      return true;
+    }
 
     // Snapshot content now so we can detect concurrent edits after the
     // async save completes (normalizeAndSplit rebuilds this.chunks in-place,
     // so markChunkSaved on a post-edit chunk would clear dirty incorrectly).
     const snapshot = dirty.map(({ order, content, version }) => ({ order, content, version }));
+    const deletionSnapshot = deleted.map(({ order, version }) => ({ order, version }));
+    const operations = [
+      ...snapshot.map((chunk) => ({ type: "update", ...chunk })),
+      ...deletionSnapshot.map((chunk) => ({ type: "delete", ...chunk })),
+    ];
 
     const BATCH_LIMIT = 450;
+    let activeUpdates = [];
+
+    const applySaveResults = (data) => {
+      const contentByOrder = new Map(
+        activeUpdates.map(({ order, content }) => [order, content])
+      );
+
+      (data.savedChunks ?? []).forEach(({ order, version }) => {
+        modelRef.current.updateChunkVersion(order, version);
+        modelRef.current.markChunkSavedIfUnchanged(
+          order,
+          contentByOrder.get(order)
+        );
+      });
+
+      (data.deletedOrders ?? []).forEach((order) => {
+        modelRef.current.markChunkDeleted(order);
+      });
+    };
 
     try {
-      for (let i = 0; i < snapshot.length; i += BATCH_LIMIT) {
-        const batch = snapshot.slice(i, i + BATCH_LIMIT);
+      setSaveStatus("saving");
+
+      for (let i = 0; i < operations.length; i += BATCH_LIMIT) {
+        const batch = operations.slice(i, i + BATCH_LIMIT);
+        activeUpdates = batch.filter(({ type }) => type === "update");
+        const activeDeletions = batch.filter(({ type }) => type === "delete");
 
         // Build clientVersions map for chunks that have a known server version
         const clientVersions = {};
-        batch.forEach(({ order, version }) => {
+        activeUpdates.forEach(({ order, version }) => {
           if (version !== undefined) {
             clientVersions[order] = version;
           }
@@ -83,44 +119,59 @@ export default function useDocumentEditor(
         const { data } = await axiosInstance.patch(
           `${API_ENDPOINTS.DOCUMENTS.GET_BY_ID}/${documentId}/chunks/batch`,
           {
-            chunks: batch.map(({ order, content }) => ({ order, content })),
+            chunks: activeUpdates.map(({ order, content }) => ({ order, content })),
+            deletedChunks: activeDeletions.map(({ order, version }) => ({
+              order,
+              ...(version !== undefined && { version }),
+            })),
             ...(hasVersions && { clientVersions }),
           }
         );
 
         if (capturedEpoch !== saveEpochRef.current) return false;
 
-        // Update tracked versions for successfully saved chunks
-        batch.forEach(({ order, version }) => {
-          if (version !== undefined) {
-            modelRef.current.updateChunkVersion(order, version + 1);
-          }
-        });
-
-        void data;
+        applySaveResults(data);
       }
 
-      // Only clear dirty if the chunk content hasn't changed since we started saving.
-      // If the user edited the same chunk during the in-flight request the dirty
-      // flag must stay set so the next debounced save picks it up.
-      snapshot.forEach(({ order, content }) => {
-        modelRef.current.markChunkSavedIfUnchanged(order, content);
-      });
+      const stillPending =
+        modelRef.current.getDirtyChunks().length > 0 ||
+        modelRef.current.getDeletedChunks().length > 0;
+      setSaveStatus(stillPending ? "dirty" : "saved");
 
-      if (modelRef.current.getDirtyChunks().length === 0) {
+      if (!stillPending) {
         onAllSaved();
       }
 
       return true;
     } catch (error) {
       if (error?.response?.status === 409 && error.response.data?.conflict) {
+        applySaveResults(error.response.data);
+        setSaveStatus("dirty");
         onConflict(error.response.data.serverChunks ?? []);
         return false;
       }
 
       console.error(error);
+      setSaveStatus("error");
       toast.error("Failed to save document");
       return false;
+    }
+  };
+
+  const saveDirtyChunks = async () => {
+    if (saveInFlightRef.current) {
+      return saveInFlightRef.current;
+    }
+
+    const savePromise = performSave();
+    saveInFlightRef.current = savePromise;
+
+    try {
+      return await savePromise;
+    } finally {
+      if (saveInFlightRef.current === savePromise) {
+        saveInFlightRef.current = null;
+      }
     }
   };
 
@@ -130,10 +181,16 @@ export default function useDocumentEditor(
   };
 
   // Called immediately when streaming stops — bypasses the debounce delay
-  const flushSave = () => {
+  const flushSave = async () => {
     clearTimeout(globalSaveTimerRef.current);
     globalSaveTimerRef.current = null;
-    saveDirtyChunks();
+    const saved = await saveDirtyChunks();
+    if (!saved) return false;
+
+    const stillPending =
+      modelRef.current.getDirtyChunks().length > 0 ||
+      modelRef.current.getDeletedChunks().length > 0;
+    return stillPending ? saveDirtyChunks() : true;
   };
 
   const setIsStreaming = (val) => {
@@ -143,6 +200,7 @@ export default function useDocumentEditor(
   const handleDocumentEdit = (from, to, insertText) => {
     modelRef.current.replaceRange(from, to, insertText);
     setChunks(modelRef.current.getChunks());
+    setSaveStatus("dirty");
 
     if (!isStreamingRef.current) {
       queueSave();
@@ -156,6 +214,7 @@ export default function useDocumentEditor(
 
     modelRef.current = new DocumentModel([{ order: 0, content: newText }]);
     setChunks(modelRef.current.getChunks());
+    setSaveStatus("dirty");
   };
 
   useEffect(() => {
@@ -171,6 +230,13 @@ export default function useDocumentEditor(
       modelRef.current.clearChunkVersion(order);
     });
 
+    // onConflict fires from inside the current save. Let that request unwind
+    // before starting the force-overwrite, otherwise the in-flight guard would
+    // hand this call the just-failed promise instead of a new save.
+    if (saveInFlightRef.current) {
+      await saveInFlightRef.current;
+    }
+
     // Force-overwrite once, then reload the new server version so later saves
     // use normal conflict detection again.
     const saved = await saveDirtyChunks();
@@ -185,6 +251,7 @@ export default function useDocumentEditor(
   return {
     chunks,
     initialContent,
+    saveStatus,
     handleDocumentEdit,
     resetDocument,
     reloadChunks,
