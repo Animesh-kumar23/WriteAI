@@ -10,6 +10,7 @@ const documentsRouter = require("./routes/documents.route");
 const aiRouter = require("./routes/ai.route");
 const exportsRouter = require("./routes/exports.route");
 const { globalLimiter } = require("./middlewares/rateLimit.middleware");
+const { MAX_UPLOAD_SIZE_MB } = require("./middlewares/upload.middleware");
 
 const app = express();
 
@@ -51,7 +52,7 @@ app.use((err, _, res, next) => {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res
         .status(400)
-        .json({ error: "File size too large! Max 2MB allowed." });
+        .json({ error: `File size too large! Max ${MAX_UPLOAD_SIZE_MB}MB allowed.` });
     }
     return res.status(400).json({ error: err.message });
   }
