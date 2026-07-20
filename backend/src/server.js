@@ -3,12 +3,10 @@ const ENV = require("./configs/env");
 const { connectToDB } = require("./configs/db");
 const { connectToRedis } = require("./configs/redis");
 const { createExportWorker } = require("./workers/export.worker");
-const { initLimiters } = require("./middlewares/rateLimit.middleware");
 
 async function startServer() {
   await connectToDB();
   await connectToRedis();
-  await initLimiters();
 
   const exportWorker = createExportWorker();
   if (exportWorker) console.log("Export worker started");

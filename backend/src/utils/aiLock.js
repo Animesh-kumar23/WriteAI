@@ -3,9 +3,8 @@ const { redisClient } = require("../configs/redis");
 
 const LOCK_TTL_SECONDS = 180; // covers retrieval + generation, not just generation
 
-// Only delete the key if its value still matches the token we set — prevents a
-// slow request from deleting a DIFFERENT request's lock after its own TTL
-// expired and someone else acquired the key in the meantime.
+// Deliberately retained during scope reduction: tokenized compare-and-delete
+// prevents a slow request from releasing a newer request's lock.
 const RELEASE_SCRIPT = `
 if redis.call("GET", KEYS[1]) == ARGV[1] then
   return redis.call("DEL", KEYS[1])
@@ -20,24 +19,13 @@ function lockKeyFor(userId, documentId) {
 
 async function acquireAILock(userId, documentId) {
   const lockKey = lockKeyFor(userId, documentId);
-  if (!redisClient) return { acquired: true, lockKey, token: null }; // graceful degradation, same as today
-
-  const token = crypto.randomUUID(); // unique per acquisition — this is what makes the compare-and-delete release safe
-  try {
-    const acquired = await redisClient.set(lockKey, token, { EX: LOCK_TTL_SECONDS, NX: true });
-    return acquired ? { acquired: true, lockKey, token } : { acquired: false, lockKey, token: null };
-  } catch {
-    return { acquired: true, lockKey, token: null }; // Redis hiccup — fail open, same as today
-  }
+  const token = crypto.randomUUID();
+  const acquired = await redisClient.set(lockKey, token, { EX: LOCK_TTL_SECONDS, NX: true });
+  return acquired ? { acquired: true, lockKey, token } : { acquired: false, lockKey, token: null };
 }
 
 async function releaseAILock(lockKey, token) {
-  if (!redisClient || !token) return;
-  try {
-    await redisClient.eval(RELEASE_SCRIPT, { keys: [lockKey], arguments: [token] });
-  } catch {
-    // best-effort — the TTL still expires the key on its own
-  }
+  await redisClient.eval(RELEASE_SCRIPT, { keys: [lockKey], arguments: [token] });
 }
 
 module.exports = { acquireAILock, releaseAILock, lockKeyFor };

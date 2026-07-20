@@ -12,7 +12,7 @@ const ENV = {
   RAG_ENABLED: process.env.RAG_ENABLED === "true", // default OFF — must be explicitly opted into
   EMBEDDING_MODEL: process.env.EMBEDDING_MODEL ?? "gemini-embedding-001",
 };
-const REQUIRED = ["DB_URI", "JWT_SECRET_KEY", "GEMINI_API_KEY"];
+const REQUIRED = ["DB_URI", "JWT_SECRET_KEY", "GEMINI_API_KEY", "REDIS_URL"];
 const missing = REQUIRED.filter((k) => !ENV[k]);
 if (missing.length > 0) {
   throw new Error(`Missing required env vars: ${missing.join(", ")}`);
