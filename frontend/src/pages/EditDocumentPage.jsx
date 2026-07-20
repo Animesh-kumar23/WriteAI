@@ -1,6 +1,5 @@
 import { streamAIContent } from "../lib/aiStream";
 import CustomPromptModal from "../components/edit-document/CustomPromptModal";
-import AISettingsModal from "../components/edit-document/AISettingsModal";
 import ConflictModal from "../components/edit-document/ConflictModal";
 import SearchModal from "../components/SearchModal";
 import ImportButton from "../components/edit-document/ImportButton";
@@ -79,21 +78,12 @@ function EditDocumentPage() {
   const [saveStatus, setSaveStatus] = useState("saved");
   const [isExporting, setIsExporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [conflictData, setConflictData] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [editorMode, setEditorMode] = useState("mde");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [aiConfig, setAiConfig] = useState({
-    style: "Professional",
-    tone: [],
-    audience: "",
-    format: "",
-    length: "",
-    extraInstructions: "",
-  });
 
   const { documentId } = useParams();
   const navigate = useNavigate();
@@ -267,8 +257,8 @@ function EditDocumentPage() {
     return;
   }
 
-  // "continue" and "custom" append to the end; everything else replaces the whole doc
-  const isReplaceAction = action !== "continue" && action !== "custom";
+  // "custom" appends to the end; generate/rewrite replace the whole doc
+  const isReplaceAction = action !== "custom";
 
   // Context sent to AI: last 3 chunks for append actions, full doc for replace actions
   const contextForAI = !isReplaceAction
@@ -285,12 +275,7 @@ function EditDocumentPage() {
 
   const actionLabels = {
     generate: "Generating draft...",
-    continue: "Continuing document...",
     rewrite: "Rewriting content...",
-    expand: "Expanding content...",
-    shorten: "Shortening content...",
-    grammar: "Fixing grammar...",
-    simplify: "Simplifying content...",
     custom: "Writing with custom prompt...",
   };
 
@@ -332,7 +317,6 @@ function EditDocumentPage() {
           document.subtitle || "",
         existingContent: contextForAI,
         customPrompt,
-        aiConfig,
       },
       (chunkText) => {
         editorRef.current.insertTextAt(
@@ -627,13 +611,7 @@ function EditDocumentPage() {
                 }
               >
                 <DropdownItem onClick={() => handleAIAction("generate")}>Generate Draft</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("continue")}>Continue Writing</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("rewrite")}>Rewrite</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("expand")}>Expand</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("shorten")}>Shorten</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("grammar")}>Fix Grammar</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("simplify")}>Simplify</DropdownItem>
-                <DropdownItem onClick={() => setIsAISettingsOpen(true)}>Change AI Settings</DropdownItem>
+                <DropdownItem onClick={() => handleAIAction("rewrite")}>Rewrite Selection</DropdownItem>
                 <DropdownItem onClick={() => handleAIAction("custom")}>Custom Prompt</DropdownItem>
               </Dropdown>
             </div>
@@ -724,12 +702,6 @@ function EditDocumentPage() {
           </footer>
         </article>
 
-        <AISettingsModal
-          isOpen={isAISettingsOpen}
-          onClose={() => setIsAISettingsOpen(false)}
-          aiConfig={aiConfig}
-          setAiConfig={setAiConfig}
-        />
         <CustomPromptModal
           isOpen={isCustomPromptOpen}
           onClose={() => {

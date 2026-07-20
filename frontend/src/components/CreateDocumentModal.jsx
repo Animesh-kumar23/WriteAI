@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import Modal from "./ui/Modal";
-import AISettingsModal from "./edit-document/AISettingsModal";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
 import toast from "react-hot-toast";
@@ -23,32 +22,12 @@ function CreateDocumentModal({
     }
   }, [isOpen, initialMode]);
   const [isCreating, setIsCreating] = useState(false);
-  const [aiConfig, setAiConfig] = useState({
-    style: "Professional",
-    tone: [],
-    audience: "",
-    format: "",
-    length: "",
-    extraInstructions: "",
-  });
-
-  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const resetModal = () => {
     setDocumentTitle("");
     setTopic("");
     setIsCreating(false);
     setMode(initialMode);
-    setAiConfig({
-      style: "Professional",
-      tone: [],
-      audience: "",
-      format: "",
-      length: "",
-      extraInstructions: "",
-    });
-
-    setIsAISettingsOpen(false);
     setIsGenerating(false);
   };
 
@@ -121,7 +100,6 @@ function CreateDocumentModal({
         documentDescription: topic,
         existingContent: "",
         customPrompt: "",
-        aiConfig,
       }
     );
 
@@ -156,7 +134,6 @@ function CreateDocumentModal({
 };
 
   return (
-    <>
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
@@ -206,15 +183,6 @@ function CreateDocumentModal({
 
             <Button
               type="button"
-              variant="secondary"
-              onClick={() => setIsAISettingsOpen(true)}
-              disabled={isGenerating || isCreating}
-            >
-              AI Settings
-            </Button>
-
-            <Button
-              type="button"
               onClick={handleGenerateWithAI}
               isLoading={isGenerating}
               disabled={isCreating}
@@ -226,13 +194,6 @@ function CreateDocumentModal({
         </div>
 
       </Modal>
-      <AISettingsModal
-        isOpen={isAISettingsOpen}
-        onClose={() => setIsAISettingsOpen(false)}
-        aiConfig={aiConfig}
-        setAiConfig={setAiConfig}
-      />
-    </>
   );
 }
 
