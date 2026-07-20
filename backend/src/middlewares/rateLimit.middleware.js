@@ -41,15 +41,4 @@ const aiLimiter = rateLimit({
     store: makeStore("rl_ai:"),
 });
 
-const exportLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 20,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id ?? req.ip,
-    validate: { keyGeneratorIpFallback: false },
-    message: { error: "Export limit reached, try again in an hour." },
-    store: makeStore("rl_export:"),
-});
-
-module.exports = { globalLimiter, authLimiter, aiLimiter, exportLimiter };
+module.exports = { globalLimiter, authLimiter, aiLimiter };

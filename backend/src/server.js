@@ -8,8 +8,8 @@ async function startServer() {
   await connectToDB();
   await connectToRedis();
 
-  const exportWorker = createExportWorker();
-  if (exportWorker) console.log("Export worker started");
+  createExportWorker();
+  console.log("Export worker started");
 
   app.listen(ENV.PORT, () => {
     console.log(`Server running on port ${ENV.PORT}`);

@@ -1,15 +1,11 @@
 const { Worker } = require("bullmq");
-const { bullmqConnection, redisClient } = require("../configs/redis");
+const { bullmqConnection } = require("../configs/redis");
 const { generatePdfBuffer } = require("../utils/pdf.generator");
 const { getFullDocumentContent } = require("../utils/documentChunks");
 const Document = require("../models/document");
 const { EXPORT_QUEUE_NAME, EXPORT_QUEUE_PREFIX } = require("../queues/export.queue");
 
-const RESULT_TTL_SECONDS = 30 * 60; // 30 minutes — long enough for users who walk away mid-export
-
 function createExportWorker() {
-  if (!bullmqConnection) return null;
-
   const worker = new Worker(
     EXPORT_QUEUE_NAME,
     async (job) => {
@@ -17,10 +13,7 @@ function createExportWorker() {
 
       const document = await Document.findById(documentId);
       if (!document) {
-        // Permanent failure — no point retrying if the document doesn't exist
-        const err = new Error(`PERMANENT: Document ${documentId} not found`);
-        err.permanent = true;
-        throw err;
+        throw new Error(`Document ${documentId} not found`);
       }
 
       const content = await getFullDocumentContent(document._id);
@@ -36,16 +29,7 @@ function createExportWorker() {
       const contentType = "application/pdf";
       const filename = `${safeName}.pdf`;
 
-      await redisClient.set(`export:${job.id}`, buffer.toString("base64"), {
-        EX: RESULT_TTL_SECONDS,
-      });
-      await redisClient.set(
-        `export:meta:${job.id}`,
-        JSON.stringify({ filename, contentType }),
-        { EX: RESULT_TTL_SECONDS }
-      );
-
-      return { filename, contentType };
+      return { filename, contentType, data: buffer.toString("base64") };
     },
     { connection: bullmqConnection, prefix: EXPORT_QUEUE_PREFIX }
   );
@@ -55,14 +39,8 @@ function createExportWorker() {
       jobId: job?.id,
       documentId: job?.data?.documentId,
       format: job?.data?.format,
-      attempt: `${job?.attemptsMade}/${job?.opts?.attempts}`,
       error: err.message,
-      permanent: err.permanent ?? false,
     });
-  });
-
-  worker.on("stalled", (jobId) => {
-    console.warn("Export job stalled — will be retried:", jobId);
   });
 
   return worker;
