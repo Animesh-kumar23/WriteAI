@@ -7,11 +7,12 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com)
+[![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
 WriteAI is a single-writer document editor with a Google Gemini writing assistant. You draft in a Markdown editor, the AI streams text into the document token by token, and everything is stored as ordered chunks so autosave only writes the parts that changed.
 
-**Live application:** [writeai-teal.vercel.app](https://writeai-teal.vercel.app)
+**Live:** Vercel — [writeai-teal.vercel.app](https://writeai-teal.vercel.app) · AWS EC2 — [13.201.5.159](http://13.201.5.159/)
 
 ### Demo account
 
@@ -69,7 +70,9 @@ Sign in with the shared demo account — no registration required:
 **Infrastructure**
 
 - Redis — a mandatory runtime dependency backing rate limits, the daily AI quota, AI locks, and BullMQ
-- Vercel for the frontend, Render for the Express API (single web service)
+- Docker — a multi-stage image, plus a Compose stack (app + MongoDB + Redis) for local runs
+- GitHub Actions CI on every push, with continuous deployment to AWS EC2 on the `aws-deploy` branch
+- Two deployment targets: Vercel + Render (`main`) and a single Docker container on AWS EC2 (`aws-deploy`) — see [Deployment](#deployment)
 
 ## Architecture
 
@@ -188,6 +191,13 @@ pnpm dev                  # starts on http://localhost:5173
 
 `backend/src/server.js` connects to MongoDB and Redis, starts the BullMQ export worker, and then begins serving the API — the worker runs inside the same process, so `pnpm dev` is all you need for exports to be processed.
 
+**Run the whole stack with Docker** *(on the `aws-deploy` branch)*: a root `.env.example` and `docker-compose.yml` bring up the app, MongoDB, and Redis together:
+
+```bash
+cp .env.example .env       # root env used by Compose
+docker compose up --build  # app on http://localhost:3000
+```
+
 ### Backend environment variables
 
 | Variable | Required | Default | Purpose |
@@ -200,6 +210,7 @@ pnpm dev                  # starts on http://localhost:5173
 | `CLIENT_URL` | — | `http://localhost:5173` | Comma-separated list of allowed CORS origins |
 | `AI_DAILY_LIMIT` | — | `100` | Per-user AI requests per UTC day |
 | `EMBEDDING_MODEL` | — | `gemini-embedding-001` | Embedding model used for retrieval |
+| `COOKIE_SECURE` | — | secure in production | Set `false` to allow login over plain HTTP — read by the containerized deployment (`aws-deploy` branch) for the TLS-less EC2 box |
 
 ### Frontend environment variables
 
@@ -261,6 +272,18 @@ The suite refuses to run unless it is pointed at an isolated MongoDB database (n
 - Export enqueuing an owned document and returning a job ID
 
 One additional test issues a real Atlas Search `$search` query; it is skipped unless `ATLAS_SEARCH_TEST_URI` points at a cluster with the indexes above, because MongoDB Community has no Atlas Search.
+
+## Deployment
+
+WriteAI runs in two independent configurations, one per branch. Both are live.
+
+**`main` — Vercel + Render.** The React frontend deploys to Vercel; the Express API deploys to Render as a standalone web service defined by [`render.yaml`](render.yaml). The API serves no frontend assets. Live at [writeai-teal.vercel.app](https://writeai-teal.vercel.app).
+
+**`aws-deploy` — single Docker container on AWS EC2.** A multi-stage `Dockerfile` builds the SPA and bundles it with the API, so one Express process serves both the API and the compiled frontend from a single container (host port `80` → container `3000`). Live at [13.201.5.159](http://13.201.5.159/). Pushing to `aws-deploy` runs the full test suite, then a GitHub Actions job SSHes into EC2, resets the checkout to the branch, rebuilds the image, and rolls the container over behind a `/health` check — rolling back to the previous image if the new one fails to become healthy. See [DOCKER.md](https://github.com/Animesh-kumar23/WriteAI/blob/aws-deploy/DOCKER.md) for local Docker usage and [DEPLOY.md](https://github.com/Animesh-kumar23/WriteAI/blob/aws-deploy/DEPLOY.md) for the EC2 setup and operations guide.
+
+### Continuous integration
+
+Every push and pull request runs the same CI on both branches: backend tests (Vitest + Supertest against MongoDB and Redis service containers), a frontend lint, and a frontend production build. On the `aws-deploy` branch, the deploy job runs only after CI passes and only for that branch.
 
 ## License and attribution
 
