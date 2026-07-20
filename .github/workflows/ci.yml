@@ -84,6 +84,13 @@ jobs:
           script: |
             set -e
             cd ~/WriteAI
+
+            # The small EC2 disk fills quickly with BuildKit layers. Prune only
+            # disposable build cache and images not used by a running container;
+            # never prune volumes, which may contain persistent application data.
+            docker builder prune -af
+            docker image prune -af
+
             git fetch origin aws-deploy
             git reset --hard origin/aws-deploy
             docker build -t writeai:next .
@@ -100,7 +107,8 @@ jobs:
               if [ "$status" = "healthy" ]; then
                 docker tag writeai:next writeai
                 docker image rm writeai:next
-                docker image prune -f
+                docker builder prune -af
+                docker image prune -af
                 exit 0
               fi
               if [ "$status" = "unhealthy" ]; then
