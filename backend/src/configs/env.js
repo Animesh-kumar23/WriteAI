@@ -8,7 +8,6 @@ const ENV = {
   CLIENT_URL: process.env.CLIENT_URL ?? "http://localhost:5173",
   REDIS_URL: process.env.REDIS_URL ?? "",
   AI_DAILY_LIMIT: parseInt(process.env.AI_DAILY_LIMIT ?? "100", 10),
-  ATLAS_SEARCH_ENABLED: process.env.ATLAS_SEARCH_ENABLED === "true",
   EMBEDDING_MODEL: process.env.EMBEDDING_MODEL ?? "gemini-embedding-001",
 };
 const REQUIRED = ["DB_URI", "JWT_SECRET_KEY", "GEMINI_API_KEY", "REDIS_URL"];
