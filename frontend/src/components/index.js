@@ -1,10 +1,6 @@
 // Logo icon
 export { default as LogoIcon } from "./LogoIcon";
 
-// UI elements
-export { default as Button } from "./ui/Button";
-export { default as Input } from "./ui/Input";
-
 // Landing page components
 export { default as Navbar } from "./home/Navbar";
 export { default as Hero } from "./home/Hero";
@@ -17,5 +13,4 @@ export { default as CreateDocumentModal } from "./CreateDocumentModal";
 
 // Others
 export { default as ProfileMenu } from "./ProfileMenu";
-export { default as Dropdown, DropdownItem } from "./ui/Dropdown";
 export { default as SearchModal } from "./SearchModal";

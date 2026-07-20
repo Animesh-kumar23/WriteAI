@@ -4,7 +4,6 @@ import ConflictModal from "../components/edit-document/ConflictModal";
 import SearchModal from "../components/SearchModal";
 import ImportButton from "../components/edit-document/ImportButton";
 import CodeMirrorEditor from "../components/edit-document/CodeMirrorEditor";
-import Modal from "../components/ui/Modal";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useBlocker } from "react-router";
 import toast from "react-hot-toast";
@@ -24,33 +23,49 @@ import {
   Heading3,
   Image,
   Italic,
+  Loader2,
   Maximize,
   Minimize,
   Save,
   Search,
   Sparkles,
 } from "lucide-react";
-import { Button, Dropdown, DropdownItem } from "../components";
 
 import useDocumentEditor from "../hooks/useDocumentEditor";
 
 function LeaveConfirmModal({ isOpen, onStay, onLeave }) {
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && isOpen) onStay();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onStay]);
+
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onStay} title="Unsaved changes">
+    <div className="overflow-y-auto fixed inset-0 z-50">
+      <div className="min-h-screen px-4 py-8 flex justify-center items-center">
+        <div onClick={onStay} className="bg-black/50 backdrop-blur-sm fixed inset-0" aria-hidden="true" />
+        <section role="dialog" aria-modal="true" aria-labelledby="leave-modal-title" className="max-w-md w-full bg-slate-800 rounded-xl p-5 md:p-6 shadow-xl relative">
+      <h3 id="leave-modal-title" className="text-slate-50 text-base md:text-lg font-semibold mb-5">Unsaved changes</h3>
       <div className="space-y-5">
         <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base">
           You have unsaved changes. Leaving this page will discard them.
         </p>
         <div className="flex justify-end items-center gap-x-2 md:gap-x-3">
-          <Button type="button" variant="secondary" onClick={onStay}>
+          <button type="button" onClick={onStay} className="bg-slate-700 text-slate-100 text-sm font-medium rounded-xl px-4 py-2.5 hover:bg-slate-600">
             Stay
-          </Button>
-          <Button type="button" variant="destructive" onClick={onLeave}>
+          </button>
+          <button type="button" onClick={onLeave} className="bg-red-600 text-white text-sm font-medium rounded-xl px-4 py-2.5 hover:bg-red-700">
             Discard &amp; leave
-          </Button>
+          </button>
         </div>
       </div>
-    </Modal>
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -524,27 +539,25 @@ function EditDocumentPage() {
               <Search className="size-4" />
             </button>
 
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              icon={FileDown}
-              size="sm"
-              isLoading={isExporting}
               disabled={isExporting}
               onClick={handleExportPDF}
+              className="bg-slate-700 text-slate-100 text-sm font-medium rounded-lg px-3 py-1.5 inline-flex items-center gap-2 hover:bg-slate-600 disabled:opacity-50"
             >
+              {isExporting ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
               <span className="hidden sm:inline">Export PDF</span>
-            </Button>
+            </button>
 
-            <Button
+            <button
               type="button"
-              isLoading={isSaving}
+              disabled={isSaving}
               onClick={() => handleSaveChanges()}
-              icon={Save}
-              size="sm"
+              className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 inline-flex items-center gap-2 disabled:opacity-50"
             >
+              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Save
-            </Button>
+            </button>
           </div>
         </div>
         </header>
@@ -562,31 +575,28 @@ function EditDocumentPage() {
                 }}
               />
 
-              <Dropdown
-                trigger={
-                  isGenerating ? (
-                    <Button
-                      type="button"
-                      onClick={handleCancelGeneration}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      Stop
-                    </Button>
-                  ) : (
-                    <Button type="button" icon={Sparkles} size="sm">
-                      <span className="flex items-center gap-2">
-                        AI Actions
-                        <ChevronDown className="size-4" />
-                      </span>
-                    </Button>
-                  )
-                }
-              >
-                <DropdownItem onClick={() => handleAIAction("generate")}>Generate Draft</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("rewrite")}>Rewrite Selection</DropdownItem>
-                <DropdownItem onClick={() => handleAIAction("custom")}>Custom Prompt</DropdownItem>
-              </Dropdown>
+              {isGenerating ? (
+                <button type="button" onClick={handleCancelGeneration} className="bg-red-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 hover:bg-red-700">
+                  Stop
+                </button>
+              ) : (
+                <details className="relative">
+                  <summary className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 inline-flex items-center gap-2 cursor-pointer list-none">
+                    <Sparkles className="size-4" /> AI Actions <ChevronDown className="size-4" />
+                  </summary>
+                  <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute right-0 z-20 overflow-hidden">
+                    {[
+                      ["generate", "Generate Draft"],
+                      ["rewrite", "Rewrite Selection"],
+                      ["custom", "Custom Prompt"],
+                    ].map(([action, label]) => (
+                      <button key={action} type="button" onClick={() => handleAIAction(action)} className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700">
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           </div>
 

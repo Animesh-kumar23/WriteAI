@@ -1,8 +1,24 @@
-import Modal from "../ui/Modal";
+import { useEffect } from "react";
 
 function ConflictModal({ isOpen, conflictedOrders, onKeepMine, onUseServer }) {
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && isOpen) onKeepMine();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onKeepMine]);
+
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onKeepMine} title="Edit Conflict Detected">
+    <div className="overflow-y-auto fixed inset-0 z-50">
+      <div className="min-h-screen px-4 py-8 flex justify-center items-center">
+        <div onClick={onKeepMine} className="bg-black/50 backdrop-blur-sm fixed inset-0" aria-hidden="true" />
+        <section role="dialog" aria-modal="true" aria-labelledby="conflict-modal-title" className="max-w-md w-full bg-slate-800 rounded-xl p-5 md:p-6 shadow-xl relative">
+      <h3 id="conflict-modal-title" className="text-slate-50 text-base md:text-lg font-semibold mb-5">
+        Edit Conflict Detected
+      </h3>
       <p className="text-gray-600 dark:text-slate-400 mb-5">
         This document was edited in another tab or session while you were writing.
         Choose how to resolve the conflict.
@@ -35,7 +51,9 @@ function ConflictModal({ isOpen, conflictedOrders, onKeepMine, onUseServer }) {
       <p className="text-xs text-gray-400 dark:text-slate-500 mt-4">
         {conflictedOrders?.length ?? 0} chunk(s) affected
       </p>
-    </Modal>
+        </section>
+      </div>
+    </div>
   );
 }
 

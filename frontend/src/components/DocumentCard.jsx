@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from "../utils/api-endpoints";
 import { Edit, Trash2, FileText, MoreVertical, PencilLine } from "lucide-react";
-import Dropdown, { DropdownItem } from "./ui/Dropdown";
 import { relativeTime } from "../utils/relativeTime";
 
 function DocumentCard({ document, onDelete, onRename }) {
@@ -56,49 +55,54 @@ function DocumentCard({ document, onDelete, onRename }) {
           onKeyDown={stopProp}
           className="opacity-0 absolute top-3 right-3 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
         >
-          <Dropdown
-            contentClassName="w-44"
-            trigger={
-              <button
-                type="button"
-                aria-label="Document actions"
-                title="More actions"
-                className="size-9 bg-white dark:bg-slate-700 rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-              >
-                <MoreVertical className="size-4 text-slate-700 dark:text-slate-300" />
-              </button>
-            }
-          >
-            <DropdownItem
+          <details className="relative">
+            <summary
+              aria-label="Document actions"
+              title="More actions"
+              className="size-9 bg-white dark:bg-slate-700 rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 cursor-pointer list-none"
+            >
+              <MoreVertical className="size-4 text-slate-700 dark:text-slate-300" />
+            </summary>
+            <div className="w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg mt-2 py-1 shadow-lg dark:shadow-black/30 absolute right-0 z-20 overflow-hidden">
+            <button
+              type="button"
               onClick={(event) => {
                 event.stopPropagation();
                 navigate(`/documents/${_id}/edit`);
               }}
+              className="w-full text-slate-700 dark:text-slate-300 px-4 py-2 text-sm text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <Edit className="text-slate-500 size-4" />
               Edit
-            </DropdownItem>
+            </button>
 
-            <DropdownItem
+            <button
+              type="button"
               onClick={(event) => {
                 event.stopPropagation();
+                event.currentTarget.closest("details")?.removeAttribute("open");
                 onRename?.();
               }}
+              className="w-full text-slate-700 dark:text-slate-300 px-4 py-2 text-sm text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <PencilLine className="text-slate-500 size-4" />
               Rename
-            </DropdownItem>
+            </button>
 
-            <DropdownItem
+            <button
+              type="button"
               onClick={(event) => {
                 event.stopPropagation();
+                event.currentTarget.closest("details")?.removeAttribute("open");
                 onDelete?.();
               }}
+              className="w-full text-slate-700 dark:text-slate-300 px-4 py-2 text-sm text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <Trash2 className="text-red-500 size-4" />
               <span className="text-red-600 dark:text-red-400">Delete</span>
-            </DropdownItem>
-          </Dropdown>
+            </button>
+            </div>
+          </details>
         </div>
       </div>
 
