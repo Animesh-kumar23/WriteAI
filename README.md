@@ -191,6 +191,8 @@ The retained backend integration suite uses Vitest and Supertest. Frontend tests
 pnpm test
 ```
 
+Set `ATLAS_SEARCH_TEST_URI` to a read-only Atlas connection string to run the real `$search` smoke test; it is skipped when the variable is absent because MongoDB Community does not provide Atlas Search.
+
 ## Deployment
 
 The frontend is deployed on Vercel and the Express API is deployed on Render. The API serves no frontend assets. The checked-in [`render.yaml`](render.yaml) defines the backend service and its required secrets; its start command launches both the API and the export worker.

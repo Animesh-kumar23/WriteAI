@@ -15,7 +15,6 @@ jobs:
       GEMINI_API_KEY: writeai-ci-dummy-key-no-api-calls
       CLIENT_URL: http://localhost:5173
       AI_DAILY_LIMIT: 1
-      RAG_ENABLED: "false"
     services:
       mongo:
         image: mongo:7
