@@ -19,13 +19,13 @@ function DocumentCard({ document, onDelete, onRename }) {
 
   return (
     <li
-      onClick={() => navigate(`/documents/${_id}`)}
+      onClick={() => navigate(`/documents/${_id}/edit`)}
       aria-label={`Open document ${title || "Untitled Document"}`}
       tabIndex={0}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          navigate(`/documents/${_id}`);
+          navigate(`/documents/${_id}/edit`);
         }
       }}
       className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden cursor-pointer relative group transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-black/30 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-600 active:shadow-xl active:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"

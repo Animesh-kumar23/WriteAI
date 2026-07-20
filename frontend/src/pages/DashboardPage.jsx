@@ -376,7 +376,7 @@ function DashboardPage() {
           isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
           onNavigate={(docId) => {
-            if (docId) navigate(`/documents/${docId}`);
+            if (docId) navigate(`/documents/${docId}/edit`);
             else setIsSearchOpen(true);
           }}
         />

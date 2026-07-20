@@ -1,7 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import { Outlet } from "react-router";
 import {
-  DocumentPage,
   DashboardPage,
   EditDocumentPage,
   ErrorPage,
@@ -45,14 +44,6 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <DashboardPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "documents/:documentId",
-        element: (
-          <ProtectedRoute>
-            <DocumentPage />
           </ProtectedRoute>
         ),
       },

@@ -15,9 +15,6 @@ export { default as Footer } from "./home/Footer";
 export { default as DocumentCard } from "./DocumentCard";
 export { default as CreateDocumentModal } from "./CreateDocumentModal";
 
-// document page component
-export { default as DocumentView } from "./document-view/DocumentView";
-
 // Others
 export { default as ProfileMenu } from "./ProfileMenu";
 export { default as Dropdown, DropdownItem } from "./ui/Dropdown";
