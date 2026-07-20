@@ -20,7 +20,7 @@ export const FEATURES = [
   {
     title: "Export & Download",
     description:
-      "Download your work as PDF or DOCX whenever you're ready.",
+      "Download your work as PDF whenever you're ready.",
     icon: Download,
     bgGradientColors: "from-emerald-500 to-teal-600",
     shadowColor: "shadow-emerald-500/50",

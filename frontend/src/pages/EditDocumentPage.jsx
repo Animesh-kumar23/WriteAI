@@ -18,9 +18,7 @@ import {
   ChevronDown,
   Code,
   Columns2,
-  FileCode,
   FileDown,
-  FileText,
   Heading1,
   Heading2,
   Heading3,
@@ -377,17 +375,15 @@ function EditDocumentPage() {
     throw new Error("Export timed out");
   };
 
-  const handleExport = async (format) => {
-    const isDocx = format === "docx";
-    const label = isDocx ? "document" : "PDF";
-    const loadingToast = toast.loading(`Generating ${label}...`);
+  const handleExportPDF = async () => {
+    const loadingToast = toast.loading("Generating PDF...");
     setIsExporting(true);
 
     try {
       const {
         data: { jobId },
       } = await axiosInstance.post(
-        `${API_ENDPOINTS.EXPORTS.REQUEST}/${documentId}/${format}`
+        `${API_ENDPOINTS.EXPORTS.REQUEST}/${documentId}/pdf`
       );
 
       const { filename } = await pollExportStatus(jobId);
@@ -407,18 +403,15 @@ function EditDocumentPage() {
       window.URL.revokeObjectURL(url);
 
       toast.dismiss(loadingToast);
-      toast.success(`${isDocx ? "Document" : "PDF"} downloaded successfully!`);
+      toast.success("PDF downloaded successfully!");
     } catch (error) {
-      console.error(`Error exporting ${format}:`, error);
+      console.error("Error exporting pdf:", error);
       toast.dismiss(loadingToast);
-      toast.error(`Failed to export ${label}!`);
+      toast.error("Failed to export PDF!");
     } finally {
       setIsExporting(false);
     }
   };
-
-  const handleExportPDF = () => handleExport("pdf");
-  const handleExportDocx = () => handleExport("docx");
 
   const stats = useMemo(() => {
     const text = chunks.map((it) => it.content).join("");
@@ -531,37 +524,17 @@ function EditDocumentPage() {
               <Search className="size-4" />
             </button>
 
-            <Dropdown
+            <Button
+              type="button"
+              variant="secondary"
+              icon={FileDown}
+              size="sm"
+              isLoading={isExporting}
               disabled={isExporting}
-              trigger={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  icon={FileDown}
-                  size="sm"
-                  isLoading={isExporting}
-                >
-                  <span className="hidden sm:inline-flex items-center gap-1">
-                    Export
-                    <ChevronDown className="size-4" />
-                  </span>
-
-                  <span className="sm:hidden">
-                    <ChevronDown className="size-4" />
-                  </span>
-                </Button>
-              }
+              onClick={handleExportPDF}
             >
-              <DropdownItem onClick={handleExportPDF} disabled={isExporting}>
-                <FileText className="text-slate-500 size-4" />
-                Export as PDF
-              </DropdownItem>
-
-              <DropdownItem onClick={handleExportDocx} disabled={isExporting}>
-                <FileCode className="text-slate-500 size-4" />
-                Export as DOCX
-              </DropdownItem>
-            </Dropdown>
+              <span className="hidden sm:inline">Export PDF</span>
+            </Button>
 
             <Button
               type="button"
