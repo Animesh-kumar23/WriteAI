@@ -1,6 +1,5 @@
 import { streamAIContent } from "../lib/aiStream";
 import CustomPromptModal from "../components/edit-document/CustomPromptModal";
-import ConflictModal from "../components/edit-document/ConflictModal";
 import SearchModal from "../components/SearchModal";
 import ImportButton from "../components/edit-document/ImportButton";
 import CodeMirrorEditor from "../components/edit-document/CodeMirrorEditor";
@@ -93,7 +92,6 @@ function EditDocumentPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
-  const [conflictData, setConflictData] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [editorMode, setEditorMode] = useState("mde");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -123,7 +121,15 @@ function EditDocumentPage() {
     () => setSaveStatus("saved"),
     (serverChunks) => {
       setSaveStatus("dirty");
-      setConflictData(serverChunks);
+      const keepLocal = window.confirm(
+        "Edit conflict detected.\n\nChoose OK to keep your version, or Cancel to use the server version."
+      );
+
+      if (keepLocal) {
+        void keepMyVersion(serverChunks.map((chunk) => chunk.order));
+      } else {
+        void acceptServerVersion().then(() => setSaveStatus("saved"));
+      }
     }
   );
 
@@ -697,18 +703,6 @@ function EditDocumentPage() {
             setIsCustomPromptOpen(false);
             await handleCustomPromptSubmit();
             setCustomPrompt("");
-          }}
-        />
-        <ConflictModal
-          isOpen={conflictData !== null}
-          conflictedOrders={conflictData?.map((c) => c.order)}
-          onKeepMine={() => {
-            keepMyVersion((conflictData ?? []).map((c) => c.order));
-            setConflictData(null);
-          }}
-          onUseServer={() => {
-            acceptServerVersion(conflictData ?? []);
-            setConflictData(null);
           }}
         />
         <SearchModal
