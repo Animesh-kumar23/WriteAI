@@ -5,7 +5,6 @@ import {
   EditDocumentPage,
   ErrorPage,
   LandingPage,
-  ProfilePage,
   SignInPage,
   SignUpPage,
 } from "../pages";
@@ -52,14 +51,6 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <EditDocumentPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "profile",
-        element: (
-          <ProtectedRoute>
-            <ProfilePage />
           </ProtectedRoute>
         ),
       },

@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "../utils/api-endpoints";
-import { ChevronDown, ChevronUp, LogOut, User2 } from "lucide-react";
-import { Link } from "react-router";
+import { ChevronDown, ChevronUp, LogOut } from "lucide-react";
 
 const ProfileMenu = ({
   isOpen,
@@ -59,17 +58,6 @@ const ProfileMenu = ({
             <p className="text-gray-500 dark:text-slate-400 text-xs truncate">
               {email}
             </p>
-          </div>
-
-          {/* Menu items */}
-          <div className="py-1">
-            <Link
-              to="/profile"
-              className="flex items-center gap-x-2 w-full text-sm text-gray-700 dark:text-slate-300 px-3 py-2 transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-slate-700 focus-visible:bg-gray-50 dark:focus-visible:bg-slate-700 focus-visible:outline-none"
-            >
-              <User2 className="size-4 text-gray-500 dark:text-slate-400" />
-              <span>View Profile</span>
-            </Link>
           </div>
 
           {/* Sign out section */}

@@ -8,12 +8,6 @@ export const API_ENDPOINTS = {
     LOGOUT: "/api/auth/logout",
     ME: "/api/auth/me",
   },
-  PROFILE: {
-    GET: "/api/profile",
-    EDIT: "/api/profile",
-    UPLOAD_AVATAR: "/api/profile/avatar",
-    DELETE_AVATAR: "/api/profile/avatar",
-  },
   DOCUMENTS: {
     GET_ALL: "/api/documents",
     GET_BY_ID: "/api/documents",
