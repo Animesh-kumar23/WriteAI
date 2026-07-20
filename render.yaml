@@ -23,8 +23,7 @@ services:
     startCommand: node backend/src/server.js
 
     # ── Health check ──────────────────────────────────────────────────
-    # 401 is a valid HTTP response (not a crash) — Render marks it healthy.
-    healthCheckPath: /api/auth/me
+    healthCheckPath: /health
 
     # ── Environment variables ─────────────────────────────────────────
     envVars:
