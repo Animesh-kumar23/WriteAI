@@ -39,7 +39,11 @@ async function searchDocuments(req, res) {
       { $project: { title: 1, subtitle: 1, coverImage: 1, score: 1 } },
     ]);
 
-    const userDocIds = titleResults.map((d) => d._id);
+    const userDocuments = await Document.find(
+      { userId: req.user.id },
+      { _id: 1 }
+    ).lean();
+    const userDocIds = userDocuments.map((document) => document._id);
 
     if (userDocIds.length > 0) {
       chunkResults = await DocumentChunk.aggregate([
