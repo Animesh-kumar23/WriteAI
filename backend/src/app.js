@@ -14,9 +14,6 @@ const { MAX_UPLOAD_SIZE_MB } = require("./middlewares/upload.middleware");
 
 const app = express();
 
-// AWS terminates HTTPS at its load balancer, so Express should trust that proxy.
-app.set("trust proxy", 1);
-
 // Over plain HTTP (COOKIE_SECURE=false) Helmet's defaults break the page:
 // the CSP's `upgrade-insecure-requests` forces every asset to HTTPS (which
 // isn't there → assets time out → white page) and HSTS pins the browser to
