@@ -284,4 +284,4 @@ writeai/
 
 [Apache 2.0](LICENSE)
 
-Early data models and auth scaffolding were adapted from [Imprintly](https://github.com/KeepSerene/imprintly-ai-e-book-creator-mern), then extended with the chunk storage, Redis, queue, and RAG work described above.
+Initial data models and auth scaffolding were adapted from [Imprintly](https://github.com/KeepSerene/imprintly-ai-e-book-creator-mern) (Apache 2.0). Substantially modified: chunk-based storage, optimistic concurrency control, streaming AI generation, Redis locking, background export jobs, and retrieval were built for this project.
