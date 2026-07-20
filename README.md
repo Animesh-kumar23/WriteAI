@@ -28,7 +28,7 @@ Sign in with the shared demo account — no registration required:
 - **Email/password accounts.** Registration and login with bcrypt-hashed passwords and JWT sessions. The API accepts either an HTTP-only cookie or an `Authorization: Bearer` token, so it works from browsers that drop cross-site cookies.
 - **Document dashboard.** Create documents blank or from an AI prompt, rename, delete, and sort by last edited, created date, or title.
 - **Markdown editor.** A CodeMirror 6 editor with editor-only and split-preview modes, a formatting toolbar (headings, bold, italic, code block, image), fullscreen, and live word / character / chunk counts.
-- **Three AI actions.** *Generate Draft* writes a fresh draft from the title and description, *Rewrite Selection* reworks the current content, and *Custom Prompt* continues the document from your own instruction. Output streams into the editor as it is produced.
+- **Three AI actions.** *Generate Draft* writes a fresh draft from the title and description, *Rewrite Document* reworks the full current document, and *Custom Prompt* continues the document from your own instruction. Output streams into the editor as it is produced.
 - **Autosave that keeps up with the AI.** Edits are debounced and saved automatically; only changed chunks are written. A status pill reports saved / saving / unsaved / failed, `Ctrl`/`Cmd`+`S` saves on demand, and leaving with unsaved work prompts a confirmation.
 - **Conflict-aware saving.** If another tab has already changed the same chunk, the save is rejected and you choose whether to keep your version or reload the server's.
 - **PDF import.** Upload a PDF to replace a document's contents; the extracted text is re-chunked in place.
@@ -56,7 +56,7 @@ Sign in with the shared demo account — no registration required:
 - React 19 with Vite 7
 - Tailwind CSS 4
 - CodeMirror 6 (`@uiw/react-codemirror`, `@codemirror/lang-markdown`)
-- React Router 7, Axios, `lucide-react`, `react-hot-toast` / `sonner`
+- React Router 7, Axios, `lucide-react`, `react-hot-toast`
 
 **Backend**
 
@@ -252,7 +252,7 @@ Collection `documentchunks`, index name `chunks_content`:
 
 ## Testing
 
-The backend has a Vitest + Supertest integration suite of **13 tests** in [`backend/tests/api.integration.test.js`](backend/tests/api.integration.test.js), run from `backend/`:
+The backend has a Vitest + Supertest integration suite of **16 tests** in [`backend/tests/api.integration.test.js`](backend/tests/api.integration.test.js), run from `backend/`:
 
 ```bash
 pnpm test
@@ -264,6 +264,8 @@ The suite refuses to run unless it is pointed at an isolated MongoDB database (n
 - Per-chunk version round-tripping through save and refetch
 - Same-chunk stale saves returning `409` with conflict data
 - Edits to different chunks merging without conflict
+- Cross-chunk deletions removing obsolete server orders
+- Mixed-success batches reporting the chunks committed before a conflict
 - "Keep mine" force-overwrite bumping the version and resuming conflict checks
 - PDF import advancing versions for the orders it replaces
 - Content-only search resolving to the owning document

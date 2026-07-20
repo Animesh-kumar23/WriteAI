@@ -31,7 +31,7 @@ export default defineConfig({
           if (!id.includes("node_modules")) return;
 
           // NOTE: Do NOT split React (react / react-dom) into its own chunk.
-          // Libraries like react-hot-toast, sonner, and lucide-react call
+          // Libraries like react-hot-toast and lucide-react call
           // React.createContext() at module-init time. When React lives in a
           // separate chunk, cross-chunk ES-module binding order can leave
           // `React` undefined at that point →

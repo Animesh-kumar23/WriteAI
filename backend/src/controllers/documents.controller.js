@@ -390,15 +390,18 @@ async function createDocumentChunk(req, res) {
 async function batchUpdateChunks(req, res) {
   try {
     const { documentId } = req.params;
-    // clientVersions: optional map of { [order]: version } for conflict detection
-    const { chunks, clientVersions } = req.body;
+    const { chunks = [], clientVersions, deletedChunks = [] } = req.body;
 
-    if (!Array.isArray(chunks) || chunks.length === 0) {
-      return res.status(400).json({ error: "chunks must be a non-empty array." });
+    if (!Array.isArray(chunks) || !Array.isArray(deletedChunks)) {
+      return res.status(400).json({ error: "chunks and deletedChunks must be arrays." });
     }
 
-    if (chunks.length > 500) {
-      return res.status(400).json({ error: "Cannot batch-save more than 500 chunks at once." });
+    if (chunks.length + deletedChunks.length === 0) {
+      return res.status(400).json({ error: "At least one chunk update or deletion is required." });
+    }
+
+    if (chunks.length + deletedChunks.length > 500) {
+      return res.status(400).json({ error: "Cannot batch-save more than 500 operations at once." });
     }
 
     const document = await Document.findById(documentId);
@@ -411,90 +414,173 @@ async function batchUpdateChunks(req, res) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const hasVersions = clientVersions && typeof clientVersions === "object";
+    const normalizedChunks = chunks.map(({ order, content }) => ({
+      order: Number(order),
+      content: content ?? "",
+    }));
+    const normalizedDeletions = deletedChunks.map(({ order, version }) => ({
+      order: Number(order),
+      version,
+    }));
+    const allOrders = [
+      ...normalizedChunks.map((chunk) => chunk.order),
+      ...normalizedDeletions.map((chunk) => chunk.order),
+    ];
 
-    // Separate versioned chunks (conflict-checked) from unversioned (upsert freely)
+    if (allOrders.some((order) => !Number.isInteger(order) || order < 0)) {
+      return res.status(400).json({ error: "Every chunk order must be a non-negative integer." });
+    }
+
+    if (new Set(allOrders).size !== allOrders.length) {
+      return res.status(400).json({ error: "A chunk order cannot be updated and deleted in the same batch." });
+    }
+
+    const hasVersions = clientVersions && typeof clientVersions === "object";
     const versionedChunks = [];
     const unversionedChunks = [];
 
-    chunks.forEach(({ order, content }) => {
+    normalizedChunks.forEach(({ order, content }) => {
       const clientVersion = hasVersions ? clientVersions[order] : undefined;
       if (clientVersion !== undefined) {
-        versionedChunks.push({ order: Number(order), content, clientVersion });
+        versionedChunks.push({ order, content, clientVersion });
       } else {
-        unversionedChunks.push({ order: Number(order), content });
+        unversionedChunks.push({ order, content });
       }
     });
 
-    let updated = 0;
+    const versionedDeletions = normalizedDeletions.filter(
+      ({ version }) => version !== undefined
+    );
+    const unversionedDeletions = normalizedDeletions.filter(
+      ({ version }) => version === undefined
+    );
+    const savedChunks = [];
+    const deletedOrders = [];
+    let didMutate = false;
 
-    // Run versioned updates in a separate bulkWrite so matchedCount is unambiguous
-    if (versionedChunks.length > 0) {
-      const versionedOps = versionedChunks.map(({ order, content, clientVersion }) => ({
+    const versionedOps = [
+      ...versionedChunks.map(({ order, content, clientVersion }) => ({
         updateOne: {
           filter: { documentId, order, version: clientVersion },
           update: { $set: { content }, $inc: { version: 1 } },
           upsert: false,
         },
-      }));
+      })),
+      ...versionedDeletions.map(({ order, version }) => ({
+        deleteOne: { filter: { documentId, order, version } },
+      })),
+    ];
 
-      const versionedResult = await DocumentChunk.bulkWrite(versionedOps);
-      updated += versionedResult.modifiedCount;
+    if (versionedOps.length > 0) {
+      await DocumentChunk.bulkWrite(versionedOps);
 
-      if (versionedResult.matchedCount < versionedChunks.length) {
-        // At least one versioned chunk didn't match — fetch current server state for conflicted orders
-        const savedOrders = new Set();
-        // We can't tell which specific ops matched from bulkWrite alone, so fetch all and compare
-        const serverChunks = await DocumentChunk.find(
-          { documentId, order: { $in: versionedChunks.map((c) => c.order) } },
-          { order: 1, content: 1, version: 1, updatedAt: 1 }
-        ).lean();
+      // bulkWrite only exposes aggregate counts. Read the affected orders back
+      // so the response can identify both successful and conflicting operations.
+      const versionedOrders = [
+        ...versionedChunks.map((chunk) => chunk.order),
+        ...versionedDeletions.map((chunk) => chunk.order),
+      ];
+      const currentChunks = await DocumentChunk.find(
+        { documentId, order: { $in: versionedOrders } },
+        { order: 1, content: 1, version: 1, updatedAt: 1 }
+      ).lean();
+      const currentByOrder = new Map(
+        currentChunks.map((chunk) => [chunk.order, chunk])
+      );
+      const conflictedChunks = [];
 
-        // After the bulkWrite, matched chunks have version === clientVersion + 1
-        serverChunks.forEach((sc) => {
-          const sent = versionedChunks.find((c) => c.order === sc.order);
-          if (
-            sent &&
-            sc.version === sent.clientVersion + 1 &&
-            sc.content === sent.content
-          ) {
-            savedOrders.add(sc.order);
-          }
-        });
+      versionedChunks.forEach((sent) => {
+        const current = currentByOrder.get(sent.order);
+        if (
+          current &&
+          current.version === sent.clientVersion + 1 &&
+          current.content === sent.content
+        ) {
+          savedChunks.push({ order: current.order, version: current.version });
+        } else if (current) {
+          conflictedChunks.push(current);
+        } else {
+          conflictedChunks.push({
+            order: sent.order,
+            content: "",
+            version: null,
+            deleted: true,
+          });
+        }
+      });
 
-        const conflictedChunks = serverChunks.filter(
-          (sc) => !savedOrders.has(sc.order)
-        );
+      versionedDeletions.forEach((sent) => {
+        const current = currentByOrder.get(sent.order);
+        if (current) {
+          conflictedChunks.push(current);
+        } else {
+          deletedOrders.push(sent.order);
+        }
+      });
+
+      didMutate = savedChunks.length > 0 || deletedOrders.length > 0;
+
+      if (conflictedChunks.length > 0) {
+        if (didMutate) {
+          await recomputeDocumentWordCount(documentId);
+        }
 
         return res.status(409).json({
           conflict: true,
-          conflictedOrders: conflictedChunks.map((c) => c.order),
+          conflictedOrders: conflictedChunks.map((chunk) => chunk.order),
           serverChunks: conflictedChunks,
+          savedChunks,
+          deletedOrders,
         });
       }
     }
 
-    // Non-versioned updates use upsert to create-or-overwrite freely
-    if (unversionedChunks.length > 0) {
-      const unversionedOps = unversionedChunks.map(({ order, content }) => ({
+    const unversionedOps = [
+      ...unversionedChunks.map(({ order, content }) => ({
         updateOne: {
           filter: { documentId, order },
-          // A forced overwrite still advances the version. Other open tabs
-          // must become stale after the user chooses "keep my version".
           update: { $set: { content }, $inc: { version: 1 } },
           upsert: true,
         },
-      }));
+      })),
+      ...unversionedDeletions.map(({ order }) => ({
+        deleteOne: { filter: { documentId, order } },
+      })),
+    ];
 
+    if (unversionedOps.length > 0) {
       const unversionedResult = await DocumentChunk.bulkWrite(unversionedOps);
-      updated += unversionedResult.modifiedCount + unversionedResult.upsertedCount;
+      didMutate = didMutate ||
+        unversionedResult.modifiedCount > 0 ||
+        unversionedResult.upsertedCount > 0 ||
+        unversionedResult.deletedCount > 0;
+
+      if (unversionedChunks.length > 0) {
+        const currentChunks = await DocumentChunk.find(
+          {
+            documentId,
+            order: { $in: unversionedChunks.map((chunk) => chunk.order) },
+          },
+          { order: 1, version: 1 }
+        ).lean();
+        currentChunks.forEach((chunk) => {
+          savedChunks.push({ order: chunk.order, version: chunk.version });
+        });
+      }
+
+      unversionedDeletions.forEach(({ order }) => deletedOrders.push(order));
     }
 
-    if (updated > 0) {
+    if (didMutate) {
       await recomputeDocumentWordCount(documentId);
     }
 
-    return res.status(200).json({ updated });
+    return res.status(200).json({
+      updated: savedChunks.length,
+      deleted: deletedOrders.length,
+      savedChunks,
+      deletedOrders,
+    });
   } catch (error) {
     console.error("Error batch-updating chunks:", error);
     return res.status(500).json({ error: "Failed to batch-save chunks." });

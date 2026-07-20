@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { createRequire } from "node:module";
+import DocumentModel from "../../frontend/src/lib/documentModel.js";
 
 const require = createRequire(import.meta.url);
 const request = require("supertest");
@@ -75,9 +76,10 @@ async function createDocumentWithChunk(userId, overrides = {}) {
   return { document, chunk };
 }
 
-function saveChunks(userId, documentId, chunks, clientVersions) {
+function saveChunks(userId, documentId, chunks, clientVersions, deletedChunks) {
   const body = { chunks };
   if (clientVersions !== undefined) body.clientVersions = clientVersions;
+  if (deletedChunks !== undefined) body.deletedChunks = deletedChunks;
 
   return request(app)
     .patch(`/api/documents/${documentId}/chunks/batch`)
@@ -148,6 +150,20 @@ afterAll(async () => {
 });
 
 describe("WriteAI API integration", () => {
+  test("cross-chunk edits retain destination versions and emit deleted-order tombstones", () => {
+    const model = new DocumentModel([
+      { order: 0, content: "abc", version: 2 },
+      { order: 1, content: "def", version: 7 },
+    ]);
+
+    model.replaceRange(1, 5, "");
+
+    expect(model.getDirtyChunks()).toEqual([
+      expect.objectContaining({ order: 0, content: "af", version: 2 }),
+    ]);
+    expect(model.getDeletedChunks()).toEqual([{ order: 1, version: 7 }]);
+  });
+
   test("rejects unauthenticated document requests", async () => {
     const response = await request(app).get("/api/documents");
 
@@ -250,6 +266,79 @@ describe("WriteAI API integration", () => {
       { order: 0, content: "Editor A", version: 1 },
       { order: 1, content: "Editor B", version: 1 },
     ]);
+  });
+
+  test("a batch update deletes removed trailing chunks and recomputes word count", async () => {
+    const user = await createUser("chunk-deletion@example.com");
+    const { document } = await createDocumentWithChunk(user._id, {
+      content: "Old first chunk",
+      version: 2,
+    });
+    await DocumentChunk.create({
+      documentId: document._id,
+      order: 1,
+      content: "Text that must not return",
+      version: 7,
+    });
+
+    const response = await saveChunks(
+      user._id,
+      document._id,
+      [{ order: 0, content: "kept words" }],
+      { 0: 2 },
+      [{ order: 1, version: 7 }]
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.deletedOrders).toEqual([1]);
+    const chunks = await DocumentChunk.find({ documentId: document._id }).lean();
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toMatchObject({ order: 0, content: "kept words", version: 3 });
+    const updatedDocument = await Document.findById(document._id).lean();
+    expect(updatedDocument.wordCount).toBe(2);
+  });
+
+  test("a mixed-success conflict reports committed chunks and their new versions", async () => {
+    const user = await createUser("partial-batch@example.com");
+    const { document } = await createDocumentWithChunk(user._id, { version: 0 });
+    await DocumentChunk.create({
+      documentId: document._id,
+      order: 1,
+      content: "Second initial chunk",
+      version: 0,
+    });
+    await DocumentChunk.updateOne(
+      { documentId: document._id, order: 1, version: 0 },
+      { $set: { content: "Other tab content" }, $inc: { version: 1 } }
+    );
+
+    const response = await saveChunks(
+      user._id,
+      document._id,
+      [
+        { order: 0, content: "Saved despite conflict" },
+        { order: 1, content: "Stale local content" },
+      ],
+      { 0: 0, 1: 0 }
+    );
+
+    expect(response.status).toBe(409);
+    expect(response.body.savedChunks).toEqual([{ order: 0, version: 1 }]);
+    expect(response.body.conflictedOrders).toEqual([1]);
+    expect(response.body.serverChunks[0]).toMatchObject({
+      order: 1,
+      content: "Other tab content",
+      version: 1,
+    });
+
+    const committed = await DocumentChunk.findOne({
+      documentId: document._id,
+      order: 0,
+    }).lean();
+    expect(committed).toMatchObject({
+      content: "Saved despite conflict",
+      version: 1,
+    });
   });
 
   test("keep-mine overwrites once, bumps version, and resumes conflict checking", async () => {

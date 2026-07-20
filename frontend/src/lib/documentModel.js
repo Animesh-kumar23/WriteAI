@@ -15,8 +15,19 @@ function findParagraphSplitPoint(text, maxLen) {
 
 class DocumentModel {
   constructor(chunks = []) {
-    this.chunks = [...chunks]
-      .sort((a, b) => a.order - b.order)
+    const sortedChunks = [...chunks].sort((a, b) => a.order - b.order);
+
+    // Versions belong to server-side orders, not to pieces of text. Keeping
+    // them separately lets a structural edit compare-and-swap the destination
+    // order and lets us emit tombstones for orders removed by a merge/delete.
+    this.serverVersionsByOrder = new Map(
+      sortedChunks
+        .filter((chunk) => chunk.version !== undefined)
+        .map((chunk) => [chunk.order, chunk.version])
+    );
+    this.forcedDeletedOrders = new Set();
+
+    this.chunks = sortedChunks
       .map((it) => ({
         order: it.order,
         content: it.content || "",
@@ -72,6 +83,25 @@ class DocumentModel {
     return this.chunks.filter((it) => it.dirty);
   }
 
+  getDeletedChunks() {
+    const currentOrders = new Set(this.chunks.map((chunk) => chunk.order));
+    const deleted = [];
+
+    this.serverVersionsByOrder.forEach((version, order) => {
+      if (!currentOrders.has(order)) {
+        deleted.push({ order, version });
+      }
+    });
+
+    this.forcedDeletedOrders.forEach((order) => {
+      if (!currentOrders.has(order)) {
+        deleted.push({ order, version: undefined });
+      }
+    });
+
+    return deleted.sort((a, b) => a.order - b.order);
+  }
+
   markChunkSaved(order) {
     const chunk = this.chunks.find((it) => it.order === order);
     if (chunk) chunk.dirty = false;
@@ -93,6 +123,13 @@ class DocumentModel {
     if (chunk) {
       chunk.version = newVersion;
     }
+    this.serverVersionsByOrder.set(order, newVersion);
+    this.forcedDeletedOrders.delete(order);
+  }
+
+  markChunkDeleted(order) {
+    this.serverVersionsByOrder.delete(order);
+    this.forcedDeletedOrders.delete(order);
   }
 
   // Used after conflict resolution to force-save without version check
@@ -100,7 +137,10 @@ class DocumentModel {
     const chunk = this.chunks.find((it) => it.order === order);
     if (chunk) {
       chunk.version = undefined;
+    } else {
+      this.forcedDeletedOrders.add(order);
     }
+    this.serverVersionsByOrder.delete(order);
   }
 
   findChunkByOffset(position) {
@@ -168,9 +208,7 @@ class DocumentModel {
           order,
           content: chunk.content,
           dirty: chunk.dirty || (order !== chunk.order),
-          // A version belongs to its server-side order. If an earlier edit
-          // moved this chunk, let the new order be created without one.
-          version: order === chunk.order ? chunk.version : undefined,
+          version: this.serverVersionsByOrder.get(order),
         });
         order++;
         continue;
@@ -184,16 +222,19 @@ class DocumentModel {
           order,
           content: remaining.slice(0, splitAt),
           dirty: true,
-          // The first piece replaces the original server chunk. Later pieces
-          // are new chunks and intentionally have no version yet.
-          version: order === chunk.order ? chunk.version : undefined,
+          version: this.serverVersionsByOrder.get(order),
         });
         remaining = remaining.slice(splitAt);
         order++;
       }
 
       if (remaining.length > 0) {
-        rebuilt.push({ order, content: remaining, dirty: true });
+        rebuilt.push({
+          order,
+          content: remaining,
+          dirty: true,
+          version: this.serverVersionsByOrder.get(order),
+        });
         order++;
       }
     }
