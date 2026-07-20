@@ -12,21 +12,6 @@ export default defineConfig({
 
     rollupOptions: {
       output: {
-        /**
-         * Manual chunk splitting — why this matters for Lighthouse:
-         *
-         *  - Each chunk gets its own cache entry in the browser.
-         *  - Vendor libraries (React, CodeMirror, dnd-kit) change far less
-         *    often than your app code, so they stay cached across deploys.
-         *  - Smaller per-chunk downloads improve Time to Interactive on
-         *    slower connections.
-         *
-         * Three buckets:
-         *  vendor-react     — React + React-DOM (always needed, rarely changes)
-         *  vendor-editor    — CodeMirror (heavy, almost never changes)
-         *  vendor-dnd       — dnd-kit (medium, rarely changes)
-         *  vendor           — everything else from node_modules
-         */
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
 

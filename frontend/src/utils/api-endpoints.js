@@ -15,8 +15,6 @@ export const API_ENDPOINTS = {
     UPDATE_CONTENT: "/api/documents",
     DELETE: "/api/documents",
 
-    GET_CHUNKS: "/api/documents",
-    UPDATE_CHUNK: "/api/documents",
     SEARCH: "/api/documents/search",
     IMPORT: "/api/documents",
   },

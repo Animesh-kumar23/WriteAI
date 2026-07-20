@@ -1,6 +1,7 @@
 const Document = require("../models/document");
 const DocumentChunk = require("../models/DocumentChunk");
 const path = require("path");
+const chunkLimits = require("../../../config/chunkLimits.json");
 const fs = require("fs");
 
 const {
@@ -234,58 +235,6 @@ async function getDocumentChunks(req, res) {
   }
 }
 
-async function updateDocumentChunk(req, res) {
-  try {
-    const { documentId, order } = req.params;
-    const { content } = req.body;
-
-    const document = await Document.findById(documentId);
-
-    if (!document) {
-      return res.status(404).json({
-        error: "Document not found!",
-      });
-    }
-
-    if (document.userId.toString() !== req.user.id.toString()) {
-      return res.status(403).json({
-        error: "Forbidden",
-      });
-    }
-
-    const chunk = await DocumentChunk.findOneAndUpdate(
-      {
-        documentId,
-        order: Number(order),
-      },
-      {
-        content,
-      },
-      {
-        new: true,
-        upsert: false,
-      },
-    );
-    if (!chunk) {
-      return res.status(404).json({
-        error: "Chunk not found!",
-      });
-    }
-
-    await recomputeDocumentWordCount(documentId);
-
-    return res.status(200).json({
-      chunk,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      error: "Failed to update chunk",
-    });
-  }
-}
-
 async function deleteDocument(req, res) {
   try {
     const { documentId } = req.params;
@@ -331,62 +280,6 @@ async function deleteDocument(req, res) {
   }
 }
 
-async function createDocumentChunk(req, res) {
-  try {
-    const { documentId } = req.params;
-    const { content = "", order } = req.body;
-
-    if (order === undefined || order < 0) {
-      return res.status(400).json({
-        error: "Valid chunk order is required!",
-      });
-    }
-
-    const document = await Document.findById(documentId);
-
-    if (!document) {
-      return res.status(404).json({
-        error: "Document not found!",
-      });
-    }
-
-    if (document.userId.toString() !== req.user.id.toString()) {
-      return res.status(403).json({
-        error: "Forbidden",
-      });
-    }
-
-    const existingChunk = await DocumentChunk.findOne({
-      documentId,
-      order,
-    });
-
-    if (existingChunk) {
-      return res.status(409).json({
-        error: "Chunk already exists!",
-      });
-    }
-
-    const chunk = await DocumentChunk.create({
-      documentId,
-      order,
-      content,
-    });
-
-    await recomputeDocumentWordCount(documentId);
-
-    return res.status(201).json({
-      chunk,
-    });
-  } catch (error) {
-    console.error("Error creating chunk:", error);
-
-    return res.status(500).json({
-      error: "Failed to create chunk",
-    });
-  }
-}
-
 async function batchUpdateChunks(req, res) {
   try {
     const { documentId } = req.params;
@@ -400,8 +293,10 @@ async function batchUpdateChunks(req, res) {
       return res.status(400).json({ error: "At least one chunk update or deletion is required." });
     }
 
-    if (chunks.length + deletedChunks.length > 500) {
-      return res.status(400).json({ error: "Cannot batch-save more than 500 operations at once." });
+    if (chunks.length + deletedChunks.length > chunkLimits.serverBatchOperations) {
+      return res.status(400).json({
+        error: `Cannot batch-save more than ${chunkLimits.serverBatchOperations} operations at once.`,
+      });
     }
 
     const document = await Document.findById(documentId);
@@ -625,9 +520,7 @@ module.exports = {
   createDocument,
   updateDocument,
   getDocumentChunks,
-  updateDocumentChunk,
   batchUpdateChunks,
-  createDocumentChunk,
   deleteDocument,
   deleteAllDocumentChunks,
 };

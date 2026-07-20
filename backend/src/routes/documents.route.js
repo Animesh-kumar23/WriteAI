@@ -6,9 +6,7 @@ const {
   createDocument,
   updateDocument,
   getDocumentChunks,
-  updateDocumentChunk,
   batchUpdateChunks,
-  createDocumentChunk,
   deleteDocument,
   deleteAllDocumentChunks,
 } = require("../controllers/documents.controller");
@@ -32,16 +30,9 @@ router
 router
   .route("/:documentId/chunks")
   .get(getDocumentChunks)
-  .post(createDocumentChunk)
   .delete(deleteAllDocumentChunks);
 
-// batch must come before /:order to avoid "batch" being parsed as an order value
 router.patch("/:documentId/chunks/batch", batchUpdateChunks);
-
-router.patch(
-  "/:documentId/chunks/:order",
-  updateDocumentChunk
-);
 
 router.post(
   "/:documentId/import",

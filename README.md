@@ -191,9 +191,10 @@ pnpm dev                  # starts on http://localhost:5173
 
 `backend/src/server.js` connects to MongoDB and Redis, starts the BullMQ export worker, and then begins serving the API — the worker runs inside the same process, so `pnpm dev` is all you need for exports to be processed.
 
-**Run the whole stack with Docker.** The `Dockerfile` builds the image on either branch; on the `aws-deploy` branch a root `.env.example` and `docker-compose.yml` add a one-command stack for the app, MongoDB, and Redis together:
+**Docker lives on `aws-deploy`.** The `main` branch deploys directly to Vercel and Render and has no Dockerfile. Switch to `aws-deploy` for the production image and the one-command local stack (app + MongoDB + Redis):
 
 ```bash
+git switch aws-deploy
 cp .env.example .env       # root env used by Compose
 docker compose up --build  # app on http://localhost:3000
 ```
@@ -252,7 +253,7 @@ Collection `documentchunks`, index name `chunks_content`:
 
 ## Testing
 
-The backend has a Vitest + Supertest integration suite of **16 tests** in [`backend/tests/api.integration.test.js`](backend/tests/api.integration.test.js), run from `backend/`:
+The backend has **17 Vitest tests** across [`backend/tests/api.integration.test.js`](backend/tests/api.integration.test.js) and [`backend/tests/pdf.generator.test.js`](backend/tests/pdf.generator.test.js). The API suite uses Supertest; run both from `backend/`:
 
 ```bash
 pnpm test
@@ -268,6 +269,7 @@ The suite refuses to run unless it is pointed at an isolated MongoDB database (n
 - Mixed-success batches reporting the chunks committed before a conflict
 - "Keep mine" force-overwrite bumping the version and resuming conflict checks
 - PDF import advancing versions for the orders it replaces
+- PDF export mapping supported Markdown blocks to readable PDF text
 - Content-only search resolving to the owning document
 - The AI lock rejecting a second generation on the same document while allowing concurrent generation on different documents
 - The daily AI quota returning `429` when exhausted

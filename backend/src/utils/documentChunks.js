@@ -1,7 +1,8 @@
 const DocumentChunk = require("../models/DocumentChunk");
 const Document = require("../models/document");
+const chunkLimits = require("../../../config/chunkLimits.json");
 
-const CHUNK_SIZE = 4000;
+const CHUNK_SIZE = chunkLimits.targetChunkCharacters;
 
 function countWords(text = "") {
   if (!text) return 0;

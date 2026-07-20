@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
 import DocumentModel from "../lib/documentModel";
+import chunkLimits from "../../../config/chunkLimits.json";
 
 export default function useDocumentEditor(
   documentId,
@@ -77,7 +78,7 @@ export default function useDocumentEditor(
       ...deletionSnapshot.map((chunk) => ({ type: "delete", ...chunk })),
     ];
 
-    const BATCH_LIMIT = 450;
+    const BATCH_LIMIT = chunkLimits.clientBatchOperations;
     let activeUpdates = [];
 
     const applySaveResults = (data) => {

@@ -118,8 +118,8 @@ async function streamAIContent(req, res) {
   const safeCustomPrompt = sanitizeInput(customPrompt, 1500);
 
   // --- Per-document concurrency lock, acquired BEFORE retrieval or prompt building ---
-  // Retrieval (§3) does real async work — a Mongo query, Redis cache reads, and
-  // potentially several embedding API calls — so it has to happen inside the lock,
+  // Retrieval does real async work — an Atlas Search query and potentially
+  // several embedding API calls — so it has to happen inside the lock,
   // not before it, or two near-simultaneous duplicate requests could both pay the
   // full retrieval cost before the second one gets rejected with 409.
   const { acquired, lockKey, token } = await acquireAILock(req.user.id, documentId);

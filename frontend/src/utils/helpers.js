@@ -129,7 +129,6 @@ export function formatMdContent(content) {
         if (paragraph.startsWith("<")) return paragraph;
 
         return `<p class="leading-relaxed mb-4">${paragraph}</p>`;
-        //return `<p class="text-slate-700 leading-relaxed mb-4">${paragraph}</p>`;
       })
       .join("")
   );
