@@ -115,6 +115,15 @@ The export endpoint enqueues a BullMQ job and immediately returns its ID. The cl
 - Redis; the backend will not boot without it
 - A Google Gemini API key
 
+### Atlas Search indexes
+
+Create these Atlas Search indexes in the database named by `DB_URI` before starting the backend:
+
+- Collection `documents`, index `documents_and_chunks`: `{"mappings":{"dynamic":false,"fields":{"title":{"type":"string","analyzer":"lucene.standard"},"subtitle":{"type":"string","analyzer":"lucene.standard"}}}}`
+- Collection `documentchunks`, index `chunks_content`: `{"mappings":{"dynamic":false,"fields":{"content":{"type":"string","analyzer":"lucene.standard","store":true}}}}`
+
+A missing index or an index created on the wrong collection can make Atlas Search return an empty result set without an error.
+
 Clone and install:
 
 ```bash
