@@ -1,7 +1,7 @@
 const Document = require("../models/document");
 const DocumentChunk = require("../models/DocumentChunk");
 const { replaceDocumentChunks } = require("../utils/documentChunks");
-const { parseDocxBuffer, parsePdfBuffer } = require("../utils/import.parser");
+const { parsePdfBuffer } = require("../utils/import.parser");
 
 async function importDocument(req, res) {
   try {
@@ -21,19 +21,14 @@ async function importDocument(req, res) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const isPdf = req.file.mimetype === "application/pdf";
     let parsedText;
 
     try {
-      parsedText = isPdf
-        ? await parsePdfBuffer(req.file.buffer)
-        : await parseDocxBuffer(req.file.buffer);
+      parsedText = await parsePdfBuffer(req.file.buffer);
     } catch (parseErr) {
       console.error("Import parse error:", parseErr.message);
       return res.status(422).json({
-        error: parseErr.message.includes("zip bomb")
-          ? "File rejected: suspicious archive structure detected."
-          : "Could not parse file. It may be corrupted or unsupported.",
+        error: "Could not parse file. It may be corrupted or unsupported.",
       });
     }
 

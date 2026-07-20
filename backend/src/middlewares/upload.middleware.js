@@ -105,18 +105,12 @@ const uploadAvatarImage = multer({
   },
 }).single("avatar");
 
-const ALLOWED_IMPORT_MIMES = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
-const ALLOWED_IMPORT_EXTS = new Set([".pdf", ".docx"]);
-
 function checkDocumentFileType(file, callback) {
   const ext = path.extname(file.originalname).toLowerCase();
-  if (ALLOWED_IMPORT_EXTS.has(ext) && ALLOWED_IMPORT_MIMES.has(file.mimetype)) {
+  if (ext === ".pdf" && file.mimetype === "application/pdf") {
     callback(null, true);
   } else {
-    callback(new Error("Only PDF and DOCX files are supported for import."));
+    callback(new Error("Only PDF files are supported for import."));
   }
 }
 
