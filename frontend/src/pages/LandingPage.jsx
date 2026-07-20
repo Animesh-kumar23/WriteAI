@@ -1,4 +1,4 @@
-import { Features, Footer, Hero, Navbar, Testimonials } from "../components";
+import { Features, Footer, Hero, Navbar } from "../components";
 
 function LandingPage() {
   return (
@@ -6,7 +6,6 @@ function LandingPage() {
       <Navbar />
       <Hero />
       <Features />
-      <Testimonials />
       <Footer />
     </main>
   );

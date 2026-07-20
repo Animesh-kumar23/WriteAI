@@ -35,30 +35,6 @@ export const FEATURES = [
   },
 ];
 
-export const TESTIMONIALS = [
-  {
-    username: "Sample User A",
-    designation: "Placeholder Persona",
-    quote:
-      "This is placeholder testimonial content for interface preview purposes only.",
-    avatarSrc: "/images/user1.jpg",
-  },
-  {
-    username: "Demo Customer",
-    designation: "Mock User Profile",
-    quote:
-      "Replace this sample text with genuine customer feedback before launch.",
-    avatarSrc: "/images/user2.jpg",
-  },
-  {
-    username: "Example Founder",
-    designation: "Demo Occupation",
-    quote:
-      "This section demonstrates layout structure, not real product testimonials.",
-    avatarSrc: "/images/user3.jpg",
-  },
-];
-
 export const WRITING_STYLES = [
   "Informative",
   "Formal",

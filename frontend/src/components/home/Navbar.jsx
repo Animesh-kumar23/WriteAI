@@ -6,10 +6,7 @@ import ProfileMenu from "../ProfileMenu";
 import LogoIcon from "../LogoIcon";
 import ThemeToggle from "../ui/ThemeToggle";
 
-const navLinks = [
-  { label: "Features", hash: "#features" },
-  { label: "Testimonials", hash: "#testimonials" },
-];
+const navLinks = [{ label: "Features", hash: "#features" }];
 
 function Navbar() {
   const { isAuthenticated, user, unauthenticateUser } = useAuthContext();
