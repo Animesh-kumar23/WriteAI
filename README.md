@@ -33,7 +33,7 @@ Sign in with the shared demo account — no registration required:
 - **Conflict-aware saving.** If another tab has already changed the same chunk, the save is rejected and you choose whether to keep your version or reload the server's.
 - **PDF import.** Upload a PDF to replace a document's contents; the extracted text is re-chunked in place.
 - **Background PDF export.** Export is queued and processed off the request path; the editor polls until the file is ready, then downloads it.
-- **Full-text search.** Search across document titles and body content with fuzzy matching and highlighted snippets, open from anywhere with `Ctrl`/`Cmd`+`K`, and jump straight to the matching chunk.
+- **Full-text search.** Search across document titles and body content with fuzzy and prefix matching plus highlighted snippets, open from anywhere with `Ctrl`/`Cmd`+`K`, and jump straight to the matching chunk.
 
 ## Screenshots
 

@@ -13,6 +13,10 @@ function extractSnippet(content, query) {
   };
 }
 
+function toWildcardPrefix(query) {
+  return `${query.toLowerCase().replace(/[\\*?]/g, "\\$&")}*`;
+}
+
 async function searchDocuments(req, res) {
   const q = req.query.q?.trim();
 
@@ -21,6 +25,7 @@ async function searchDocuments(req, res) {
   }
 
   const limit = Math.min(parseInt(req.query.limit) || 10, 20);
+  const prefixQuery = toWildcardPrefix(q);
 
   try {
     let titleResults = [];
@@ -30,7 +35,25 @@ async function searchDocuments(req, res) {
       {
         $search: {
           index: "documents_and_chunks",
-          text: { query: q, path: ["title", "subtitle"], fuzzy: { maxEdits: 1 } },
+          compound: {
+            should: [
+              {
+                text: {
+                  query: q,
+                  path: ["title", "subtitle"],
+                  fuzzy: { maxEdits: 1 },
+                },
+              },
+              {
+                wildcard: {
+                  query: prefixQuery,
+                  path: ["title", "subtitle"],
+                  allowAnalyzedField: true,
+                },
+              },
+            ],
+            minimumShouldMatch: 1,
+          },
         },
       },
       { $match: { userId: req.user.id } },
@@ -50,7 +73,25 @@ async function searchDocuments(req, res) {
         {
           $search: {
             index: "chunks_content",
-            text: { query: q, path: "content", fuzzy: { maxEdits: 1 } },
+            compound: {
+              should: [
+                {
+                  text: {
+                    query: q,
+                    path: "content",
+                    fuzzy: { maxEdits: 1 },
+                  },
+                },
+                {
+                  wildcard: {
+                    query: prefixQuery,
+                    path: "content",
+                    allowAnalyzedField: true,
+                  },
+                },
+              ],
+              minimumShouldMatch: 1,
+            },
             highlight: { path: "content" },
           },
         },
