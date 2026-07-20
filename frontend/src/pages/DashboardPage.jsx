@@ -377,7 +377,8 @@ function DashboardPage() {
             <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute right-0 z-20 overflow-hidden">
             <button
               type="button"
-              onClick={() => {
+              onClick={(event) => {
+                event.currentTarget.closest("details")?.removeAttribute("open");
                 setCreateMode("blank");
                 setIsCreateDocumentModalOpen(true);
               }}
@@ -388,7 +389,8 @@ function DashboardPage() {
 
             <button
               type="button"
-              onClick={() => {
+              onClick={(event) => {
+                event.currentTarget.closest("details")?.removeAttribute("open");
                 setCreateMode("ai");
                 setIsCreateDocumentModalOpen(true);
               }}
@@ -439,7 +441,8 @@ function DashboardPage() {
               <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute left-1/2 -translate-x-1/2 z-20 overflow-hidden">
               <button
                 type="button"
-                onClick={() => {
+                onClick={(event) => {
+                  event.currentTarget.closest("details")?.removeAttribute("open");
                   setCreateMode("blank");
                   setIsCreateDocumentModalOpen(true);
                 }}
@@ -450,7 +453,8 @@ function DashboardPage() {
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={(event) => {
+                  event.currentTarget.closest("details")?.removeAttribute("open");
                   setCreateMode("ai");
                   setIsCreateDocumentModalOpen(true);
                 }}
