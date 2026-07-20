@@ -286,62 +286,6 @@ async function updateDocumentChunk(req, res) {
   }
 }
 
-async function updateDocumentCover(req, res) {
-  try {
-    const { documentId } = req.params;
-
-    if (!req.file) {
-      return res.status(400).json({
-        error: "No image file provided!",
-      });
-    }
-
-    const document = await Document.findById(documentId);
-
-    if (!document) {
-      fs.unlinkSync(req.file.path);
-
-      return res.status(404).json({
-        error: "Document not found!",
-      });
-    }
-
-    if (document.userId.toString() !== req.user.id.toString()) {
-      fs.unlinkSync(req.file.path);
-
-      return res.status(403).json({
-        error: "Forbidden",
-      });
-    }
-
-    if (document.coverImage) {
-      const oldImagePath = path.join(__dirname, "../../", document.coverImage);
-
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-      }
-    }
-
-    document.coverImage = `/uploads/${req.file.filename}`;
-    await document.save();
-
-    return res.status(200).json({
-      message: "Cover updated successfully!",
-      document,
-    });
-  } catch (error) {
-    console.error("Error updating cover:", error);
-
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    return res.status(500).json({
-      error: "Internal Server Error!",
-    });
-  }
-}
-
 async function deleteDocument(req, res) {
   try {
     const { documentId } = req.params;
@@ -596,7 +540,6 @@ module.exports = {
   updateDocumentChunk,
   batchUpdateChunks,
   createDocumentChunk,
-  updateDocumentCover,
   deleteDocument,
   deleteAllDocumentChunks,
 };

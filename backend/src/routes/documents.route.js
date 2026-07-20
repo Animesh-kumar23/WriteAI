@@ -9,17 +9,12 @@ const {
   updateDocumentChunk,
   batchUpdateChunks,
   createDocumentChunk,
-  updateDocumentCover,
   deleteDocument,
   deleteAllDocumentChunks,
 } = require("../controllers/documents.controller");
 const { searchDocuments } = require("../controllers/search.controller");
 const { importDocument } = require("../controllers/import.controller");
-const {
-  uploadDocumentCoverImage,
-  uploadDocumentImport,
-  verifyImageSignature,
-} = require("../middlewares/upload.middleware");
+const { uploadDocumentImport } = require("../middlewares/upload.middleware");
 
 router.use(authenticate);
 
@@ -46,13 +41,6 @@ router.patch("/:documentId/chunks/batch", batchUpdateChunks);
 router.patch(
   "/:documentId/chunks/:order",
   updateDocumentChunk
-);
-
-router.put(
-  "/:documentId/cover",
-  uploadDocumentCoverImage,
-  verifyImageSignature,
-  updateDocumentCover
 );
 
 router.post(
