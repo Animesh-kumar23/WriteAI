@@ -1,4 +1,3 @@
-const ENV = require("../configs/env");
 const { ai } = require("../configs/genai");
 const { acquireAILock, releaseAILock } = require("../utils/aiLock");
 const { retrieveRelevantChunks } = require("../services/retrieval");
@@ -75,7 +74,7 @@ ${retrievedContext}
 }
 
 async function getRetrievedContext({ req, documentId, action, safeDocumentTitle, safeCustomPrompt, safeExistingContent }) {
-  if (!ENV.RAG_ENABLED || !documentId || action !== "custom") {
+  if (!documentId || action !== "custom") {
     return "";
   }
 
@@ -83,7 +82,6 @@ async function getRetrievedContext({ req, documentId, action, safeDocumentTitle,
     documentId,
     userId: req.user.id,
     queryText: buildRagQuery({ safeDocumentTitle, safeCustomPrompt, safeExistingContent }),
-    excludeText: safeExistingContent,
   });
 
   return relevant
