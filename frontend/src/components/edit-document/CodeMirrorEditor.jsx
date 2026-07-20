@@ -5,7 +5,6 @@ import {
 } from "react";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
-import { useTheme } from "../../contexts/ThemeContext";
 
 const CodeMirrorEditor = forwardRef(
   (
@@ -16,7 +15,6 @@ const CodeMirrorEditor = forwardRef(
     ref
   ) => {
     const editorRef = useRef(null);
-    const { isDark } = useTheme();
 
     useImperativeHandle(ref, () => ({
       getText() {
@@ -93,7 +91,7 @@ const CodeMirrorEditor = forwardRef(
           value={initialContent}
           height="700px"
           extensions={[markdown(), EditorView.lineWrapping]}
-          theme={isDark ? "dark" : "light"}
+          theme="dark"
           basicSetup={{
             lineNumbers: false,
             foldGutter: false,

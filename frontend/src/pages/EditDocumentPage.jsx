@@ -1,52 +1,85 @@
 import { streamAIContent } from "../lib/aiStream";
 import CustomPromptModal from "../components/edit-document/CustomPromptModal";
-import AISettingsModal from "../components/edit-document/AISettingsModal";
-import ConflictModal from "../components/edit-document/ConflictModal";
 import SearchModal from "../components/SearchModal";
-import Modal from "../components/ui/Modal";
-import { useEffect, useRef, useState } from "react";
+import ImportButton from "../components/edit-document/ImportButton";
+import CodeMirrorEditor from "../components/edit-document/CodeMirrorEditor";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useBlocker } from "react-router";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { API_ENDPOINTS } from "../utils/api-endpoints";
+import { formatMdContent } from "../utils/helpers";
 import {
+  AlignLeft,
   ArrowLeft,
+  Bold,
   ChevronDown,
-  Edit,
-  FileCode,
+  Code,
+  Columns2,
   FileDown,
-  FileText,
-  NotebookText,
+  Heading1,
+  Heading2,
+  Heading3,
+  Image,
+  Italic,
+  Loader2,
+  Maximize,
+  Minimize,
   Save,
   Search,
+  Sparkles,
 } from "lucide-react";
-import {
-  DocumentDetailsTab,
-  Button,
-  ContentEditorTab,
-  Dropdown,
-  DropdownItem,
-} from "../components";
 
 import useDocumentEditor from "../hooks/useDocumentEditor";
 
 function LeaveConfirmModal({ isOpen, onStay, onLeave }) {
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && isOpen) onStay();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onStay]);
+
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onStay} title="Unsaved changes">
+    <div className="overflow-y-auto fixed inset-0 z-50">
+      <div className="min-h-screen px-4 py-8 flex justify-center items-center">
+        <div onClick={onStay} className="bg-black/50 backdrop-blur-sm fixed inset-0" aria-hidden="true" />
+        <section role="dialog" aria-modal="true" aria-labelledby="leave-modal-title" className="max-w-md w-full bg-slate-800 rounded-xl p-5 md:p-6 shadow-xl relative">
+      <h3 id="leave-modal-title" className="text-slate-50 text-base md:text-lg font-semibold mb-5">Unsaved changes</h3>
       <div className="space-y-5">
         <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base">
           You have unsaved changes. Leaving this page will discard them.
         </p>
         <div className="flex justify-end items-center gap-x-2 md:gap-x-3">
-          <Button type="button" variant="secondary" onClick={onStay}>
+          <button type="button" onClick={onStay} className="bg-slate-700 text-slate-100 text-sm font-medium rounded-xl px-4 py-2.5 hover:bg-slate-600">
             Stay
-          </Button>
-          <Button type="button" variant="destructive" onClick={onLeave}>
+          </button>
+          <button type="button" onClick={onLeave} className="bg-red-600 text-white text-sm font-medium rounded-xl px-4 py-2.5 hover:bg-red-700">
             Discard &amp; leave
-          </Button>
+          </button>
         </div>
       </div>
-    </Modal>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ToolbarBtn({ onClick, title, active, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`p-1.5 rounded transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-50 ${
+        active ? "bg-slate-200 dark:bg-slate-600 text-slate-900 dark:text-slate-50" : ""
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -55,23 +88,13 @@ function EditDocumentPage() {
   const [document, setDocument] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved");
-  const [activeTab, setActiveTab] = useState("editor");
-  const [isUploading, setIsUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
-  const [conflictData, setConflictData] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [aiConfig, setAiConfig] = useState({
-    style: "Professional",
-    tone: [],
-    audience: "",
-    format: "",
-    length: "",
-    extraInstructions: "",
-  });
+  const [editorMode, setEditorMode] = useState("mde");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { documentId } = useParams();
   const navigate = useNavigate();
@@ -98,7 +121,15 @@ function EditDocumentPage() {
     () => setSaveStatus("saved"),
     (serverChunks) => {
       setSaveStatus("dirty");
-      setConflictData(serverChunks);
+      const keepLocal = window.confirm(
+        "Edit conflict detected.\n\nChoose OK to keep your version, or Cancel to use the server version."
+      );
+
+      if (keepLocal) {
+        void keepMyVersion(serverChunks.map((chunk) => chunk.order));
+      } else {
+        void acceptServerVersion().then(() => setSaveStatus("saved"));
+      }
     }
   );
 
@@ -107,7 +138,6 @@ function EditDocumentPage() {
     handleDocumentEdit(from, to, insertText);
   };
 
-  const fileInputRef = useRef(null);
   const isStreamingRef = useRef(false);
   const abortControllerRef = useRef(null);
   const editorRef = useRef(null);
@@ -164,7 +194,6 @@ function EditDocumentPage() {
       const payload = {
         title: documentToSave.title,
         subtitle: documentToSave.subtitle,
-        coverImage: documentToSave.coverImage,
       };
       await axiosInstance.put(
         `${API_ENDPOINTS.DOCUMENTS.UPDATE_CONTENT}/${documentId}`,
@@ -211,44 +240,6 @@ function EditDocumentPage() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
 
-  const handleCoverImgUpload = async (event) => {
-    const file = event.target.files[0];
-
-    if (!file) {
-      toast.error("Please select an image file first.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("coverImage", file);
-
-    setIsUploading(true);
-
-    try {
-      const { data } = await axiosInstance.put(
-        `${API_ENDPOINTS.DOCUMENTS.UPDATE_COVER}/${documentId}/cover`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      setDocument(data.document);
-
-      toast.success("Cover image updated successfully!");
-    } catch (error) {
-      console.error("Error uploading cover image:", error);
-
-      toast.error("Failed to upload cover image! Please try again.", {
-        duration: 5000,
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleCustomPromptSubmit = async () => {
     if (!customPrompt.trim()) return;
 
@@ -285,8 +276,8 @@ function EditDocumentPage() {
     return;
   }
 
-  // "continue" and "custom" append to the end; everything else replaces the whole doc
-  const isReplaceAction = action !== "continue" && action !== "custom";
+  // "custom" appends to the end; generate/rewrite replace the whole doc
+  const isReplaceAction = action !== "custom";
 
   // Context sent to AI: last 3 chunks for append actions, full doc for replace actions
   const contextForAI = !isReplaceAction
@@ -303,12 +294,7 @@ function EditDocumentPage() {
 
   const actionLabels = {
     generate: "Generating draft...",
-    continue: "Continuing document...",
     rewrite: "Rewriting content...",
-    expand: "Expanding content...",
-    shorten: "Shortening content...",
-    grammar: "Fixing grammar...",
-    simplify: "Simplifying content...",
     custom: "Writing with custom prompt...",
   };
 
@@ -350,7 +336,6 @@ function EditDocumentPage() {
           document.subtitle || "",
         existingContent: contextForAI,
         customPrompt,
-        aiConfig,
       },
       (chunkText) => {
         editorRef.current.insertTextAt(
@@ -411,17 +396,15 @@ function EditDocumentPage() {
     throw new Error("Export timed out");
   };
 
-  const handleExport = async (format) => {
-    const isDocx = format === "docx";
-    const label = isDocx ? "document" : "PDF";
-    const loadingToast = toast.loading(`Generating ${label}...`);
+  const handleExportPDF = async () => {
+    const loadingToast = toast.loading("Generating PDF...");
     setIsExporting(true);
 
     try {
       const {
         data: { jobId },
       } = await axiosInstance.post(
-        `${API_ENDPOINTS.EXPORTS.REQUEST}/${documentId}/${format}`
+        `${API_ENDPOINTS.EXPORTS.REQUEST}/${documentId}/pdf`
       );
 
       const { filename } = await pollExportStatus(jobId);
@@ -441,18 +424,42 @@ function EditDocumentPage() {
       window.URL.revokeObjectURL(url);
 
       toast.dismiss(loadingToast);
-      toast.success(`${isDocx ? "Document" : "PDF"} downloaded successfully!`);
+      toast.success("PDF downloaded successfully!");
     } catch (error) {
-      console.error(`Error exporting ${format}:`, error);
+      console.error("Error exporting pdf:", error);
       toast.dismiss(loadingToast);
-      toast.error(`Failed to export ${label}!`);
+      toast.error("Failed to export PDF!");
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleExportPDF = () => handleExport("pdf");
-  const handleExportDocx = () => handleExport("docx");
+  const stats = useMemo(() => {
+    const text = chunks.map((it) => it.content).join("");
+    return {
+      words: text.split(/\s+/).filter(Boolean).length,
+      characters: text.length,
+    };
+  }, [chunks]);
+
+  const previewHtml = useMemo(
+    () => chunks.map((it) => it.content).join(""),
+    [chunks]
+  );
+
+  const handleFormat = (type) => {
+    const ref = editorRef.current;
+    if (!ref) return;
+    switch (type) {
+      case "bold":  ref.wrapSelection("**", "**"); break;
+      case "italic": ref.wrapSelection("_", "_"); break;
+      case "code":  ref.wrapSelection("```\n", "\n```"); break;
+      case "image": ref.insertAtCursor("![Alt text](url)"); break;
+      case "h1":    ref.prependLinePrefix("# "); break;
+      case "h2":    ref.prependLinePrefix("## "); break;
+      case "h3":    ref.prependLinePrefix("### "); break;
+    }
+  };
 
   if (
     isLoading ||
@@ -470,7 +477,11 @@ function EditDocumentPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-display flex">
-      <main className="flex-1 h-full flex flex-col">
+      <main
+        className={`flex-1 h-full flex flex-col ${
+          isFullscreen ? "fixed inset-0 z-50 overflow-hidden bg-white dark:bg-slate-900" : ""
+        }`}
+      >
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 sm:p-4 sticky top-0 z-10">
         <div className="flex justify-between items-center gap-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -483,24 +494,45 @@ function EditDocumentPage() {
               <ArrowLeft className="size-5 text-slate-700 dark:text-slate-300" />
             </button>
 
-            <input
-              type="text"
-              name="title"
-              value={document.title || ""}
-              onChange={handleEditDocument}
-              onBlur={() => {
-                if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  event.currentTarget.blur();
-                }
-              }}
-              placeholder="Untitled Document"
-              aria-label="Document title"
-              className="flex-1 min-w-0 bg-transparent text-slate-900 dark:text-slate-50 text-base sm:text-lg font-semibold truncate px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <div className="flex-1 min-w-0 flex flex-col">
+              <input
+                type="text"
+                name="title"
+                value={document.title || ""}
+                onChange={handleEditDocument}
+                onBlur={() => {
+                  if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder="Untitled Document"
+                aria-label="Document title"
+                className="w-full min-w-0 bg-transparent text-slate-900 dark:text-slate-50 text-base sm:text-lg font-semibold truncate px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+              />
+
+              <input
+                type="text"
+                name="subtitle"
+                value={document.subtitle || ""}
+                onChange={handleEditDocument}
+                onBlur={() => {
+                  if (isDirty && !saveLockRef.current) handleSaveChanges(document, false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder="Add a subtitle..."
+                aria-label="Document subtitle"
+                className="w-full min-w-0 bg-transparent text-slate-500 dark:text-slate-400 text-xs sm:text-sm truncate px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -513,115 +545,152 @@ function EditDocumentPage() {
               <Search className="size-4" />
             </button>
 
-            <Dropdown
-              disabled={isExporting}
-              trigger={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  icon={FileDown}
-                  size="sm"
-                  isLoading={isExporting}
-                >
-                  <span className="hidden sm:inline-flex items-center gap-1">
-                    Export
-                    <ChevronDown className="size-4" />
-                  </span>
-
-                  <span className="sm:hidden">
-                    <ChevronDown className="size-4" />
-                  </span>
-                </Button>
-              }
-            >
-              <DropdownItem onClick={handleExportPDF} disabled={isExporting}>
-                <FileText className="text-slate-500 size-4" />
-                Export as PDF
-              </DropdownItem>
-
-              <DropdownItem onClick={handleExportDocx} disabled={isExporting}>
-                <FileCode className="text-slate-500 size-4" />
-                Export as DOCX
-              </DropdownItem>
-            </Dropdown>
-
-            <Button
+            <button
               type="button"
-              isLoading={isSaving}
-              onClick={() => handleSaveChanges()}
-              icon={Save}
-              size="sm"
+              disabled={isExporting}
+              onClick={handleExportPDF}
+              className="bg-slate-700 text-slate-100 text-sm font-medium rounded-lg px-3 py-1.5 inline-flex items-center gap-2 hover:bg-slate-600 disabled:opacity-50"
             >
+              {isExporting ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
+              <span className="hidden sm:inline">Export PDF</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => handleSaveChanges()}
+              className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 inline-flex items-center gap-2 disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Save
-            </Button>
+            </button>
           </div>
         </div>
-
-          <nav className="flex items-center gap-x-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mt-3 w-fit">
-            <button
-              type="button"
-              onClick={() => {
-                if (isGenerating) return;
-                setActiveTab("editor");
-              }}
-              className={`${activeTab === "editor"
-                ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
-            >
-              <Edit className="size-4" />
-              <span>Editor</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("details")}
-              className={`${activeTab === "details"
-                ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 shadow-sm"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                } text-sm font-medium rounded-md px-3 sm:px-4 py-2 flex justify-center items-center gap-2 transition-all duration-200`}
-            >
-              <NotebookText className="size-4" />
-              <span>Details</span>
-            </button>
-          </nav>
         </header>
 
-        <section className="w-full flex-1 overflow-hidden">
-          {activeTab === "editor" ? (
-            <ContentEditorTab
-              chunks={chunks}
-              initialContent={initialContent}
-              editorRef={editorRef}
-              isGenerating={isGenerating}
-              onAIAction={handleAIAction}
-              onCancelGeneration={handleCancelGeneration}
-              onOpenAISettings={() => setIsAISettingsOpen(true)}
-              onDocumentEdit={handleEditorEdit}
-              documentId={documentId}
-              onImportComplete={() => {
-                // Re-fetch chunks in place instead of hard-reloading the page.
-                reloadChunks();
-                setSaveStatus("saved");
-              }}
-            />
-          ) : (
-            <DocumentDetailsTab
-              document={document}
-              onEditDocument={handleEditDocument}
-              fileInputRef={fileInputRef}
-              isUploading={isUploading}
-              onCoverImageUpload={handleCoverImgUpload}
-            />
-          )}
-        </section>
+        <article className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+          {/* AI Actions + import row */}
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shadow-sm shrink-0">
+            <div className="px-4 sm:px-6 lg:px-8 py-3 flex justify-end items-center gap-2">
+              <ImportButton
+                documentId={documentId}
+                onImportComplete={() => {
+                  // Re-fetch chunks in place instead of hard-reloading the page.
+                  reloadChunks();
+                  setSaveStatus("saved");
+                }}
+              />
 
-        <AISettingsModal
-          isOpen={isAISettingsOpen}
-          onClose={() => setIsAISettingsOpen(false)}
-          aiConfig={aiConfig}
-          setAiConfig={setAiConfig}
-        />
+              {isGenerating ? (
+                <button type="button" onClick={handleCancelGeneration} className="bg-red-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 hover:bg-red-700">
+                  Stop
+                </button>
+              ) : (
+                <details className="relative">
+                  <summary className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 inline-flex items-center gap-2 cursor-pointer list-none">
+                    <Sparkles className="size-4" /> AI Actions <ChevronDown className="size-4" />
+                  </summary>
+                  <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute right-0 z-20 overflow-hidden">
+                    {[
+                      ["generate", "Generate Draft"],
+                      ["rewrite", "Rewrite Selection"],
+                      ["custom", "Custom Prompt"],
+                    ].map(([action, label]) => (
+                      <button key={action} type="button" onClick={() => handleAIAction(action)} className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700">
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          </div>
+
+          {/* Formatting toolbar */}
+          <div className="border-b border-slate-100 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between gap-2 shrink-0 bg-white dark:bg-slate-900">
+            <div className="flex items-center gap-0.5">
+              <ToolbarBtn onClick={() => handleFormat("h1")} title="Heading 1"><Heading1 className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("h2")} title="Heading 2"><Heading2 className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("h3")} title="Heading 3"><Heading3 className="size-4" /></ToolbarBtn>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1 shrink-0" />
+
+              <ToolbarBtn onClick={() => handleFormat("bold")} title="Bold"><Bold className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("italic")} title="Italic"><Italic className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("code")} title="Code block"><Code className="size-4" /></ToolbarBtn>
+              <ToolbarBtn onClick={() => handleFormat("image")} title="Image (URL)"><Image className="size-4" /></ToolbarBtn>
+            </div>
+
+            <div className="flex items-center gap-0.5">
+              <ToolbarBtn onClick={() => setEditorMode("mde")} title="Editor only" active={editorMode === "mde"}>
+                <AlignLeft className="size-4" />
+              </ToolbarBtn>
+              <ToolbarBtn onClick={() => setEditorMode("split")} title="Split: editor + preview" active={editorMode === "split"}>
+                <Columns2 className="size-4" />
+              </ToolbarBtn>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1 shrink-0" />
+
+              <ToolbarBtn onClick={() => setIsFullscreen((v) => !v)} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+                {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+              </ToolbarBtn>
+            </div>
+          </div>
+
+          {/* Editor + optional preview */}
+          <section
+            className={`flex-1 overflow-hidden flex ${
+              editorMode === "split" ? "flex-row" : "flex-col"
+            }`}
+          >
+            {/* Editor pane */}
+            <div
+              className={`${
+                editorMode === "split"
+                  ? "w-1/2 border-r border-slate-200 dark:border-slate-700"
+                  : "w-full"
+              } overflow-y-auto px-4 sm:px-6 lg:px-8 py-6`}
+            >
+              <div className="max-w-5xl mx-auto">
+                <CodeMirrorEditor
+                  key={initialContent}
+                  ref={editorRef}
+                  initialContent={initialContent}
+                  onDocumentEdit={handleEditorEdit}
+                />
+              </div>
+            </div>
+
+            {/* Preview pane (split mode) */}
+            {editorMode === "split" && (
+              <div className="w-1/2 overflow-y-auto px-6 sm:px-8 py-6 bg-slate-50 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700">
+                {previewHtml.trim() ? (
+                  <div
+                    className="max-w-3xl mx-auto reading-content"
+                    style={{ fontSize: 16, lineHeight: 1.75, fontFamily: "Inter, sans-serif" }}
+                    dangerouslySetInnerHTML={{
+                      __html: formatMdContent(previewHtml),
+                    }}
+                  />
+                ) : (
+                  <p className="text-slate-400 dark:text-slate-500 text-sm text-center mt-12">
+                    Preview will appear here as you write.
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Stats footer */}
+          <footer className="text-slate-500 dark:text-slate-400 text-sm border-t border-slate-100 dark:border-slate-800 px-6 py-4 shrink-0 bg-white dark:bg-slate-900">
+            <div className="flex items-center gap-6">
+              <span>Words: <strong className="text-slate-700 dark:text-slate-200">{stats.words}</strong></span>
+              <span>Characters: <strong className="text-slate-700 dark:text-slate-200">{stats.characters}</strong></span>
+              <span>Chunks: <strong className="text-slate-700 dark:text-slate-200">{chunks.length}</strong></span>
+            </div>
+          </footer>
+        </article>
+
         <CustomPromptModal
           isOpen={isCustomPromptOpen}
           onClose={() => {
@@ -634,18 +703,6 @@ function EditDocumentPage() {
             setIsCustomPromptOpen(false);
             await handleCustomPromptSubmit();
             setCustomPrompt("");
-          }}
-        />
-        <ConflictModal
-          isOpen={conflictData !== null}
-          conflictedOrders={conflictData?.map((c) => c.order)}
-          onKeepMine={() => {
-            keepMyVersion((conflictData ?? []).map((c) => c.order));
-            setConflictData(null);
-          }}
-          onUseServer={() => {
-            acceptServerVersion(conflictData ?? []);
-            setConflictData(null);
           }}
         />
         <SearchModal

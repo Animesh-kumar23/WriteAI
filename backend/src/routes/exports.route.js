@@ -1,6 +1,5 @@
 const router = require("express").Router();
 const { authenticate } = require("../middlewares/auth.middleware");
-const { exportLimiter } = require("../middlewares/rateLimit.middleware");
 const {
   requestExport,
   getExportStatus,
@@ -14,12 +13,12 @@ router.use(authenticate);
 router.get("/stats", getExportStats);
 
 // Enqueue an export job
-router.post("/:documentId/:format", exportLimiter, requestExport);
+router.post("/:documentId/:format", requestExport);
 
 // Poll job status
 router.get("/status/:jobId", getExportStatus);
 
-// Download completed export (expires after 5 min)
+// Download completed export
 router.get("/download/:jobId", downloadExport);
 
 module.exports = router;

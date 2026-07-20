@@ -6,15 +6,10 @@ import toast from "react-hot-toast";
 import DashboardLayout from "../layouts/DashboardLayout";
 import {
   DocumentCard,
-  Button,
   CreateDocumentModal,
-  Dropdown,
-  DropdownItem,
-  Input,
   SearchModal,
 } from "../components";
-import Modal from "../components/ui/Modal";
-import { ArrowUpDown, FileText, FilePlus, PencilLine, Search } from "lucide-react";
+import { ArrowUpDown, FileText, FilePlus, Loader2, PencilLine, Search } from "lucide-react";
 
 const SORT_OPTIONS = [
   { key: "updatedDesc", label: "Last edited (newest)" },
@@ -110,23 +105,24 @@ const DeleteConfirmationModal = ({
           </p>
 
           <div className="flex justify-end items-center gap-x-2 md:gap-x-3">
-            <Button
+            <button
               type="button"
-              variant="secondary"
               onClick={onClose}
               disabled={isDeleting}
+              className="bg-slate-700 text-slate-100 text-sm font-medium rounded-xl px-4 py-2.5 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
-            </Button>
+            </button>
 
-            <Button
+            <button
               type="button"
-              variant="destructive"
               onClick={onConfirm}
-              isLoading={isDeleting}
+              disabled={isDeleting}
+              className="bg-red-600 text-white text-sm font-medium rounded-xl px-4 py-2.5 inline-flex items-center gap-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Delete
-            </Button>
+              {isDeleting && <Loader2 className="size-5 animate-spin" />}
+              {!isDeleting && "Delete"}
+            </button>
           </div>
         </section>
       </div>
@@ -143,6 +139,14 @@ const RenameDocumentModal = ({
 }) => {
   const [draft, setDraft] = useState(initialTitle || "");
 
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && isOpen && !isRenaming) onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, isRenaming, onClose]);
+
   const submit = () => {
     const trimmed = draft.trim();
     if (!trimmed) {
@@ -156,35 +160,61 @@ const RenameDocumentModal = ({
     onConfirm(trimmed);
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={isRenaming ? () => { } : onClose} title="Rename document">
-      <div className="space-y-5">
-        <Input
-          autoFocus
-          type="text"
-          label="Document Title"
-          required
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              submit();
-            }
-          }}
-          placeholder="My new writing project"
-          disabled={isRenaming}
+    <div className="overflow-y-auto fixed inset-0 z-50">
+      <div className="min-h-screen px-4 py-8 flex justify-center items-center">
+        <div
+          onClick={isRenaming ? undefined : onClose}
+          className="bg-black/50 backdrop-blur-sm fixed inset-0"
+          aria-hidden="true"
         />
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rename-modal-title"
+          className="max-w-md w-full bg-slate-800 rounded-xl p-5 md:p-6 shadow-xl relative"
+        >
+          <h3 id="rename-modal-title" className="text-slate-50 text-base md:text-lg font-semibold mb-5">
+            Rename document
+          </h3>
+      <div className="space-y-5">
+        <div className="grid gap-2">
+          <label htmlFor="rename-title" className="text-slate-300 text-sm font-medium">
+            Document Title<span className="text-red-500">*</span>
+          </label>
+          <input
+            id="rename-title"
+            autoFocus
+            type="text"
+            required
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submit();
+              }
+            }}
+            placeholder="My new writing project"
+            disabled={isRenaming}
+            className="w-full h-11 bg-slate-800 text-slate-50 text-sm placeholder-slate-500 px-3 py-2 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
+          />
+        </div>
         <div className="flex justify-end items-center gap-x-2 md:gap-x-3">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isRenaming}>
+          <button type="button" onClick={onClose} disabled={isRenaming} className="bg-slate-700 text-slate-100 text-sm font-medium rounded-xl px-4 py-2.5 hover:bg-slate-600 disabled:opacity-50">
             Cancel
-          </Button>
-          <Button type="button" onClick={submit} isLoading={isRenaming}>
-            Save
-          </Button>
+          </button>
+          <button type="button" onClick={submit} disabled={isRenaming} className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-xl px-4 py-2.5 inline-flex items-center gap-2 disabled:opacity-50">
+            {isRenaming && <Loader2 className="size-5 animate-spin" />}
+            {!isRenaming && "Save"}
+          </button>
         </div>
       </div>
-    </Modal>
+        </section>
+      </div>
+    </div>
   );
 };
 
@@ -323,52 +353,53 @@ function DashboardPage() {
             </button>
 
             {documents.length > 1 && (
-              <Dropdown
-                trigger={
-                  <Button type="button" variant="outline" size="sm" icon={ArrowUpDown}>
-                    <span className="hidden sm:inline">
-                      {SORT_OPTIONS.find((o) => o.key === sortBy)?.label || "Sort"}
-                    </span>
-                  </Button>
-                }
-              >
+              <label className="relative inline-flex items-center">
+                <ArrowUpDown className="size-4 absolute left-3 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value)}
+                  aria-label="Sort documents"
+                  className="appearance-none bg-transparent border border-slate-600 text-slate-300 text-sm rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
                 {SORT_OPTIONS.map((option) => (
-                  <DropdownItem key={option.key} onClick={() => setSortBy(option.key)}>
+                  <option key={option.key} value={option.key}>
                     {option.label}
-                  </DropdownItem>
+                  </option>
                 ))}
-              </Dropdown>
+                </select>
+              </label>
             )}
 
-          <Dropdown
-            trigger={
-              <Button
-                type="button"
-                icon={FilePlus}
-                className="w-full sm:w-auto"
-              >
-                New Document
-              </Button>
-            }
-          >
-            <DropdownItem
-              onClick={() => {
+          <details className="relative">
+            <summary className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-xl px-4 py-2.5 shadow-lg shadow-violet-500/30 flex items-center gap-2 cursor-pointer list-none">
+              <FilePlus className="size-4" /> New Document
+            </summary>
+            <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute right-0 z-20 overflow-hidden">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.currentTarget.closest("details")?.removeAttribute("open");
                 setCreateMode("blank");
                 setIsCreateDocumentModalOpen(true);
               }}
+              className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700"
             >
               Create Blank
-            </DropdownItem>
+            </button>
 
-            <DropdownItem
-              onClick={() => {
+            <button
+              type="button"
+              onClick={(event) => {
+                event.currentTarget.closest("details")?.removeAttribute("open");
                 setCreateMode("ai");
                 setIsCreateDocumentModalOpen(true);
               }}
+              className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700"
             >
               Create with AI
-            </DropdownItem>
-          </Dropdown>
+            </button>
+            </div>
+          </details>
           </div>
         </header>
 
@@ -376,7 +407,7 @@ function DashboardPage() {
           isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
           onNavigate={(docId) => {
-            if (docId) navigate(`/documents/${docId}`);
+            if (docId) navigate(`/documents/${docId}/edit`);
             else setIsSearchOpen(true);
           }}
         />
@@ -403,34 +434,36 @@ function DashboardPage() {
               Start your first writing project with AI assistance.
             </p>
 
-            <Dropdown
-              trigger={
-                <Button
-                  type="button"
-                  icon={PencilLine}
-                >
-                  Start Writing
-                </Button>
-              }
-            >
-              <DropdownItem
-                onClick={() => {
+            <details className="relative">
+              <summary className="bg-linear-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-xl px-4 py-2.5 shadow-lg shadow-violet-500/30 flex items-center gap-2 cursor-pointer list-none">
+                <PencilLine className="size-4" /> Start Writing
+              </summary>
+              <div className="w-56 bg-slate-800 border border-slate-700 rounded-lg mt-2 py-1 shadow-lg absolute left-1/2 -translate-x-1/2 z-20 overflow-hidden">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.closest("details")?.removeAttribute("open");
                   setCreateMode("blank");
                   setIsCreateDocumentModalOpen(true);
                 }}
+                className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700"
               >
                 Create Blank
-              </DropdownItem>
+              </button>
 
-              <DropdownItem
-                onClick={() => {
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.closest("details")?.removeAttribute("open");
                   setCreateMode("ai");
                   setIsCreateDocumentModalOpen(true);
                 }}
+                className="w-full text-slate-300 px-4 py-2 text-sm text-left hover:bg-slate-700"
               >
                 Create with AI
-              </DropdownItem>
-            </Dropdown>
+              </button>
+              </div>
+            </details>
           </section>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">

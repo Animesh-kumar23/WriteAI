@@ -1,19 +1,12 @@
 const Document = require("../models/document");
 const { exportQueue } = require("../queues/export.queue");
-const { redisClient } = require("../configs/redis");
-
-const VALID_FORMATS = new Set(["pdf", "docx"]);
 
 async function requestExport(req, res) {
   try {
     const { documentId, format } = req.params;
 
-    if (!VALID_FORMATS.has(format)) {
-      return res.status(400).json({ error: "Format must be pdf or docx" });
-    }
-
-    if (!exportQueue) {
-      return res.status(503).json({ error: "Export queue unavailable" });
+    if (format !== "pdf") {
+      return res.status(400).json({ error: "Format must be pdf" });
     }
 
     const document = await Document.findById(documentId);
@@ -42,10 +35,6 @@ async function getExportStatus(req, res) {
   try {
     const { jobId } = req.params;
 
-    if (!exportQueue) {
-      return res.status(503).json({ error: "Export queue unavailable" });
-    }
-
     const job = await exportQueue.getJob(jobId);
     if (!job) {
       return res.status(404).json({ error: "Job not found" });
@@ -58,11 +47,7 @@ async function getExportStatus(req, res) {
     const state = await job.getState();
 
     if (state === "completed") {
-      const metaRaw = await redisClient.get(`export:meta:${jobId}`);
-      if (!metaRaw) {
-        return res.status(410).json({ error: "Export expired, please re-export" });
-      }
-      const { filename, contentType } = JSON.parse(metaRaw);
+      const { filename, contentType } = job.returnvalue;
       return res.json({ status: "completed", filename, contentType });
     }
 
@@ -81,10 +66,6 @@ async function downloadExport(req, res) {
   try {
     const { jobId } = req.params;
 
-    if (!exportQueue) {
-      return res.status(503).json({ error: "Export queue unavailable" });
-    }
-
     const job = await exportQueue.getJob(jobId);
     if (!job) {
       return res.status(404).json({ error: "Job not found" });
@@ -99,17 +80,8 @@ async function downloadExport(req, res) {
       return res.status(400).json({ error: `Export not ready (${state})` });
     }
 
-    const [base64, metaRaw] = await Promise.all([
-      redisClient.get(`export:${jobId}`),
-      redisClient.get(`export:meta:${jobId}`),
-    ]);
-
-    if (!base64 || !metaRaw) {
-      return res.status(410).json({ error: "Export expired, please re-export" });
-    }
-
-    const { filename, contentType } = JSON.parse(metaRaw);
-    const buffer = Buffer.from(base64, "base64");
+    const { filename, contentType, data } = job.returnvalue;
+    const buffer = Buffer.from(data, "base64");
 
     res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -125,10 +97,6 @@ async function downloadExport(req, res) {
 }
 
 async function getExportStats(req, res) {
-  if (!exportQueue) {
-    return res.status(503).json({ error: "Export queue unavailable" });
-  }
-
   const [waiting, active, completed, failed] = await Promise.all([
     exportQueue.getWaitingCount(),
     exportQueue.getActiveCount(),

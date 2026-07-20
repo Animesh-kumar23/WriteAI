@@ -125,15 +125,6 @@ function Footer() {
                   Features
                 </a>
               </li>
-
-              <li>
-                <a
-                  href="#testimonials"
-                  className="text-gray-400 text-sm transition-colors duration-300 hover:text-violet-400 focus-visible:text-violet-400 inline-block"
-                >
-                  Testimonials
-                </a>
-              </li>
             </ul>
           </nav>
         </div>

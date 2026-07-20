@@ -1,10 +1,5 @@
 const Document = require("../models/document");
 const DocumentChunk = require("../models/DocumentChunk");
-const ENV = require("../configs/env");
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function extractSnippet(content, query) {
   const idx = content.toLowerCase().indexOf(query.toLowerCase());
@@ -31,72 +26,42 @@ async function searchDocuments(req, res) {
     let titleResults = [];
     let chunkResults = [];
 
-    if (ENV.ATLAS_SEARCH_ENABLED) {
-      // --- Atlas Search path (production) ---
-      titleResults = await Document.aggregate([
+    titleResults = await Document.aggregate([
+      {
+        $search: {
+          index: "documents_and_chunks",
+          text: { query: q, path: ["title", "subtitle"], fuzzy: { maxEdits: 1 } },
+        },
+      },
+      { $match: { userId: req.user.id } },
+      { $limit: limit },
+      { $addFields: { score: { $meta: "searchScore" } } },
+      { $project: { title: 1, subtitle: 1, coverImage: 1, score: 1 } },
+    ]);
+
+    const userDocIds = titleResults.map((d) => d._id);
+
+    if (userDocIds.length > 0) {
+      chunkResults = await DocumentChunk.aggregate([
         {
           $search: {
-            index: "documents_and_chunks",
-            text: { query: q, path: ["title", "subtitle"], fuzzy: { maxEdits: 1 } },
+            index: "chunks_content",
+            text: { query: q, path: "content", fuzzy: { maxEdits: 1 } },
+            highlight: { path: "content" },
           },
         },
-        { $match: { userId: req.user.id } },
-        { $limit: limit },
-        { $addFields: { score: { $meta: "searchScore" } } },
-        { $project: { title: 1, subtitle: 1, coverImage: 1, score: 1 } },
-      ]);
-
-      const userDocIds = titleResults.map((d) => d._id);
-
-      if (userDocIds.length > 0) {
-        const rawChunkResults = await DocumentChunk.aggregate([
-          {
-            $search: {
-              index: "chunks_content",
-              text: { query: q, path: "content", fuzzy: { maxEdits: 1 } },
-              highlight: { path: "content" },
-            },
-          },
-          { $match: { documentId: { $in: userDocIds } } },
-          { $limit: 50 },
-          {
-            $project: {
-              documentId: 1,
-              order: 1,
-              content: 1,
-              highlights: { $meta: "searchHighlights" },
-              score: { $meta: "searchScore" },
-            },
-          },
-        ]);
-
-        chunkResults = rawChunkResults;
-      }
-    } else {
-      // --- Regex fallback path (local dev / non-Atlas) ---
-      titleResults = await Document.find(
-        { userId: req.user.id, $text: { $search: q } },
-        { score: { $meta: "textScore" }, title: 1, subtitle: 1, coverImage: 1 }
-      )
-        .sort({ score: { $meta: "textScore" } })
-        .limit(limit)
-        .lean();
-
-      const sanitizedQ = escapeRegex(q);
-      const userDocIds = await Document.find(
-        { userId: req.user.id },
-        { _id: 1 }
-      ).lean();
-
-      chunkResults = await DocumentChunk.find(
+        { $match: { documentId: { $in: userDocIds } } },
+        { $limit: 50 },
         {
-          documentId: { $in: userDocIds.map((d) => d._id) },
-          content: { $regex: sanitizedQ, $options: "i" },
+          $project: {
+            documentId: 1,
+            order: 1,
+            content: 1,
+            highlights: { $meta: "searchHighlights" },
+            score: { $meta: "searchScore" },
+          },
         },
-        { documentId: 1, order: 1, content: 1 }
-      )
-        .limit(50)
-        .lean();
+      ]);
     }
 
     // --- Build result map keyed by documentId ---
@@ -143,7 +108,7 @@ async function searchDocuments(req, res) {
       const entry = resultMap.get(key);
       if (!entry) return;
 
-      if (ENV.ATLAS_SEARCH_ENABLED && chunk.highlights?.length) {
+      if (chunk.highlights?.length) {
         // Use Atlas highlight texts
         const highlight = chunk.highlights[0];
         const snippetParts = highlight.texts ?? [];

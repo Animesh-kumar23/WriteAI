@@ -139,6 +139,10 @@ class DocumentModel {
     const merged =
       before + insertText + after;
 
+    // Keep the version of the chunk where the edit started. The server uses
+    // this value to reject a save when another tab changed the same chunk.
+    const version = this.chunks[startIndex].version;
+
     this.chunks.splice(
       startIndex,
       endIndex - startIndex + 1,
@@ -146,6 +150,7 @@ class DocumentModel {
         order: this.chunks[startIndex].order,
         content: merged,
         dirty: true,
+        version,
       }
     );
 
@@ -163,6 +168,9 @@ class DocumentModel {
           order,
           content: chunk.content,
           dirty: chunk.dirty || (order !== chunk.order),
+          // A version belongs to its server-side order. If an earlier edit
+          // moved this chunk, let the new order be created without one.
+          version: order === chunk.order ? chunk.version : undefined,
         });
         order++;
         continue;
@@ -172,7 +180,14 @@ class DocumentModel {
 
       while (remaining.length > HARD_LIMIT) {
         const splitAt = findParagraphSplitPoint(remaining, HARD_LIMIT);
-        rebuilt.push({ order, content: remaining.slice(0, splitAt), dirty: true });
+        rebuilt.push({
+          order,
+          content: remaining.slice(0, splitAt),
+          dirty: true,
+          // The first piece replaces the original server chunk. Later pieces
+          // are new chunks and intentionally have no version yet.
+          version: order === chunk.order ? chunk.version : undefined,
+        });
         remaining = remaining.slice(splitAt);
         order++;
       }

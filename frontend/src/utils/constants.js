@@ -20,7 +20,7 @@ export const FEATURES = [
   {
     title: "Export & Download",
     description:
-      "Download your work as PDF or DOCX whenever you're ready.",
+      "Download your work as PDF whenever you're ready.",
     icon: Download,
     bgGradientColors: "from-emerald-500 to-teal-600",
     shadowColor: "shadow-emerald-500/50",
@@ -32,30 +32,6 @@ export const FEATURES = [
     icon: Library,
     bgGradientColors: "from-pink-500 to-rose-600",
     shadowColor: "shadow-pink-500/50",
-  },
-];
-
-export const TESTIMONIALS = [
-  {
-    username: "Sample User A",
-    designation: "Placeholder Persona",
-    quote:
-      "This is placeholder testimonial content for interface preview purposes only.",
-    avatarSrc: "/images/user1.jpg",
-  },
-  {
-    username: "Demo Customer",
-    designation: "Mock User Profile",
-    quote:
-      "Replace this sample text with genuine customer feedback before launch.",
-    avatarSrc: "/images/user2.jpg",
-  },
-  {
-    username: "Example Founder",
-    designation: "Demo Occupation",
-    quote:
-      "This section demonstrates layout structure, not real product testimonials.",
-    avatarSrc: "/images/user3.jpg",
   },
 ];
 

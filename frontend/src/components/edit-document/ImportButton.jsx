@@ -42,7 +42,7 @@ function ImportButton({ documentId, onImportComplete }) {
       } else if (status === 422) {
         toast.error(message || "Could not parse file. It may be corrupted.");
       } else if (status === 400) {
-        toast.error(message || "Invalid file type. Only PDF and DOCX are supported.");
+        toast.error(message || "Invalid file type. Only PDF is supported.");
       } else {
         toast.error("Import failed. Please try again.");
       }
@@ -56,7 +56,7 @@ function ImportButton({ documentId, onImportComplete }) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx"
+        accept=".pdf"
         className="hidden"
         onChange={handleFileChange}
         disabled={isImporting}
@@ -65,7 +65,7 @@ function ImportButton({ documentId, onImportComplete }) {
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={isImporting}
-        title="Import PDF or DOCX"
+        title="Import PDF"
         className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Import document"
       >
