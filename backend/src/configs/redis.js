@@ -1,6 +1,7 @@
 const { createClient } = require("redis");
 const ENV = require("./env");
 
+const REDIS_STARTUP_TIMEOUT_MS = 5000;
 const redisClient = createClient({ url: ENV.REDIS_URL });
 
 redisClient.on("error", (err) => console.error("Redis client error:", err));
@@ -21,7 +22,19 @@ const bullmqConnection = {
 };
 
 async function connectToRedis() {
-  await redisClient.connect();
+  let timeoutId;
+  try {
+    await Promise.race([
+      redisClient.connect(),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`Redis connection timed out after ${REDIS_STARTUP_TIMEOUT_MS}ms`));
+        }, REDIS_STARTUP_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
   console.log("Connected to Redis");
 }
 
