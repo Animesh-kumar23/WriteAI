@@ -22,6 +22,6 @@ async function startServer() {
     await startServer();
   } catch (error) {
     console.error("Error starting the server:", error);
-    process.exitCode = 1;
+    process.exit(1);
   }
 })();
