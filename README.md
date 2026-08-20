@@ -78,7 +78,7 @@ Sign in with the shared demo account — no registration required:
 
 **Documents are ordered chunks.** A `Document` holds metadata (title, subtitle, word count); its body lives in `DocumentChunk` records keyed by `(documentId, order)`. Imported content is split every 4,000 characters. During live editing, the client waits until 6,000 characters and prefers a nearby paragraph boundary. Each chunk carries its own `version` counter, and reading a document reassembles the chunks in `order`.
 
-**Autosave writes only what changed.** As you type, the `DocumentModel` marks the touched chunks dirty. A debounced save collects the dirty set and sends it to `PATCH /api/documents/:id/chunks/batch` — unchanged chunks are never transmitted, so save payloads and write volume stay flat as a document grows. The dirty flag for a chunk is cleared only if its content still matches what was sent, so an edit made during an in-flight save is never lost.
+**Autosave writes only what changed.** As you type, the `DocumentModel` marks the touched chunks dirty. A debounced save collects the dirty set and sends it to `PATCH /api/documents/:id/chunks/batch` — unchanged chunks are never transmitted, so save payloads and write volume stay flat as a document grows — measured at **4 KB per save regardless of document size, against 201 KB for a whole-document save** ([benchmarks](docs/BENCHMARKS.md)). The dirty flag for a chunk is cleared only if its content still matches what was sent, so an edit made during an in-flight save is never lost.
 
 **Conflicts are detected per chunk.** Each dirty chunk is sent with the client's last-known `version`. The server updates each chunk with a compare-and-swap keyed on that version. If every chunk matches, the batch commits; if any chunk's version has moved on, the batch returns `409` with the current server copies of the conflicting chunks, and the editor resolves it.
 
@@ -275,6 +275,31 @@ The suite refuses to run unless it is pointed at an isolated MongoDB database (n
 - Export enqueuing an owned document and returning a job ID
 
 One additional test issues a real Atlas Search `$search` query; it is skipped unless `ATLAS_SEARCH_TEST_URI` points at a cluster with the indexes above, because MongoDB Community has no Atlas Search.
+
+## Benchmarks
+
+Chunked autosave is the central design decision in this project, so it is
+measured rather than asserted. [`backend/benchmarks/chunking-benchmark.js`](backend/benchmarks/chunking-benchmark.js)
+runs the same edits twice against the real API and a real MongoDB — once with
+documents chunked at 4,000 characters, once with each document stored as a
+single chunk — and reports the difference:
+
+```bash
+pnpm --dir backend bench
+```
+
+On a 200 KB document:
+
+| Metric | No chunking | Chunked | Change |
+| --- | --- | --- | --- |
+| Autosave payload | 201.3 KB | 4.0 KB | **−98.0%** |
+| Autosave latency (p50) | 37.3 ms | 26.7 ms | **−28.4%** |
+| Autosave latency (p95) | 45.9 ms | 33.7 ms | −26.6% |
+| Document open | 23.4 ms | 25.9 ms | +2.5 ms |
+| Concurrent edits to different sections rejected | 10 / 10 | 0 / 10 | **100% → 0%** |
+
+Full method, the smaller document sizes, and the cases chunking does *not*
+improve are in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ## Deployment
 

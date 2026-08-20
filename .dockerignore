@@ -24,6 +24,7 @@ Thumbs.db
 # Files that are not needed to run the production image
 docs
 .github
+backend/benchmarks
 **/*.test.js
 **/*.test.jsx
 **/coverage
