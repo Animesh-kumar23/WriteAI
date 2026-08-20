@@ -1,0 +1,75 @@
+{
+  "recordedAt": "2026-08-20T08:50:21.279Z",
+  "node": "v26.1.0",
+  "settings": {
+    "SAVES_PER_RUN": 50,
+    "WARMUP_SAVES": 10,
+    "CONFLICT_PAIRS": 10,
+    "CONFLICT_SIZE_KB": 50
+  },
+  "autosave": [
+    {
+      "sizeKb": 10,
+      "chunked": {
+        "chunkCount": 3,
+        "payloadBytes": 3793,
+        "latencyP50": 10.5,
+        "latencyP95": 13.1,
+        "loadMs": 6.1
+      },
+      "whole": {
+        "chunkCount": 1,
+        "payloadBytes": 10533,
+        "latencyP50": 10.7,
+        "latencyP95": 13.4,
+        "loadMs": 5.8
+      }
+    },
+    {
+      "sizeKb": 50,
+      "chunked": {
+        "chunkCount": 13,
+        "payloadBytes": 4085,
+        "latencyP50": 11.7,
+        "latencyP95": 15.5,
+        "loadMs": 7.2
+      },
+      "whole": {
+        "chunkCount": 1,
+        "payloadBytes": 51709,
+        "latencyP50": 13,
+        "latencyP95": 16.2,
+        "loadMs": 6.4
+      }
+    },
+    {
+      "sizeKb": 200,
+      "chunked": {
+        "chunkCount": 52,
+        "payloadBytes": 4094,
+        "latencyP50": 26.7,
+        "latencyP95": 33.7,
+        "loadMs": 25.9
+      },
+      "whole": {
+        "chunkCount": 1,
+        "payloadBytes": 206139,
+        "latencyP50": 37.3,
+        "latencyP95": 45.9,
+        "loadMs": 23.4
+      }
+    }
+  ],
+  "conflicts": {
+    "chunked": {
+      "pairs": 10,
+      "rejected": 0,
+      "rejectedPercent": 0
+    },
+    "whole": {
+      "pairs": 10,
+      "rejected": 10,
+      "rejectedPercent": 100
+    }
+  }
+}
