@@ -66,49 +66,108 @@ jobs:
       - name: Build frontend
         run: pnpm --dir frontend build
 
-  # Continuous Deployment: after tests pass on the aws-deploy branch, SSH into
-  # the EC2 box and rebuild the container. Other branches/PRs run tests only.
-  deploy:
-    name: Deploy to AWS EC2
+  # Build the production image here on the runner, not on the server. The
+  # free-tier EC2 box has a small disk, and assembling Docker layers needs
+  # several gigabytes of scratch space it does not have — that is what used to
+  # fail the deploy with "no space left on device". GitHub's runner has room to
+  # spare and throws it away afterwards, so the server only ever has to
+  # download a finished image.
+  image:
+    name: Build and push image
     needs: test
     if: github.ref == 'refs/heads/aws-deploy'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Two tags: the commit SHA, so a deploy is pinned to exactly this build
+      # and a rollback is a real thing you can point at, and `latest` for
+      # pulling by hand when debugging. The registry path must be lowercase.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/animesh-kumar23/writeai:${{ github.sha }}
+            ghcr.io/animesh-kumar23/writeai:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Continuous Deployment: pull the image built above and restart the container.
+  # The server builds nothing and no longer needs a copy of the repo.
+  deploy:
+    name: Deploy to AWS EC2
+    needs: image
+    if: github.ref == 'refs/heads/aws-deploy'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
+        env:
+          IMAGE: ghcr.io/animesh-kumar23/writeai:${{ github.sha }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 20m
+          envs: IMAGE,REGISTRY_USER,REGISTRY_TOKEN
           script: |
             set -e
-            cd ~/WriteAI
 
-            # The small EC2 disk fills quickly with BuildKit layers. Prune only
-            # disposable build cache and images not used by a running container;
-            # never prune volumes, which may contain persistent application data.
-            docker builder prune -af
+            # Reclaim what Docker can spare before pulling. Stopped containers
+            # and images no container is using go; volumes are never touched,
+            # they hold uploaded avatars and cover images.
+            docker container prune -f
             docker image prune -af
 
-            git fetch origin aws-deploy
-            git reset --hard origin/aws-deploy
-            docker build -t writeai:next .
-            docker stop writeai || true
-            docker rm writeai || true
-            docker run -d --name writeai -p 80:3000 \
-              --env-file ~/writeai.env \
-              -v writeai_uploads:/app/backend/uploads \
-              --restart unless-stopped \
-              writeai:next
+            echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+
+            # Remember what is serving right now so a bad rollout can go back.
+            PREVIOUS=$(docker inspect --format='{{.Image}}' writeai 2>/dev/null || echo "")
+
+            # Download first, swap second. The running container keeps serving
+            # during the pull, so if the pull fails the site is left untouched.
+            docker pull "$IMAGE"
+
+            start_container() {
+              docker rm -f writeai 2>/dev/null || true
+              docker run -d --name writeai -p 80:3000 \
+                --env-file ~/writeai.env \
+                -v writeai_uploads:/app/backend/uploads \
+                --restart unless-stopped \
+                --log-opt max-size=10m --log-opt max-file=3 \
+                "$1"
+            }
+
+            start_container "$IMAGE"
 
             for attempt in $(seq 1 24); do
-              status=$(docker inspect --format='{{.State.Health.Status}}' writeai)
+              status=$(docker inspect --format='{{.State.Health.Status}}' writeai 2>/dev/null || echo starting)
               if [ "$status" = "healthy" ]; then
-                docker tag writeai:next writeai
-                docker image rm writeai:next
-                docker builder prune -af
+                # The old image is now unused, so this is what keeps the small
+                # disk from filling up again over time.
                 docker image prune -af
+                docker logout ghcr.io
                 exit 0
               fi
               if [ "$status" = "unhealthy" ]; then
@@ -117,13 +176,16 @@ jobs:
               sleep 5
             done
 
-            docker logs writeai
-            docker rm -f writeai
-            if docker image inspect writeai >/dev/null 2>&1; then
-              docker run -d --name writeai -p 80:3000 \
-                --env-file ~/writeai.env \
-                -v writeai_uploads:/app/backend/uploads \
-                --restart unless-stopped \
-                writeai
+            # The new image never came up healthy. Put the previous one back and
+            # fail the job, rather than leaving a broken container running and
+            # reporting success.
+            echo "New image did not become healthy."
+            docker logs --tail 50 writeai || true
+
+            if [ -n "$PREVIOUS" ]; then
+              echo "Rolling back to $PREVIOUS"
+              start_container "$PREVIOUS"
             fi
+
+            docker logout ghcr.io
             exit 1

@@ -192,17 +192,25 @@ You need four values before touching AWS. Collect them in a notepad.
 Your portfolio link is `http://SERVER_IP`.
 
 ### Updating after you change code
+
+Normally you do nothing on the server: push to `aws-deploy` and GitHub Actions
+runs the tests, builds the image on its own runner, pushes it to GitHub
+Container Registry, and tells this box to pull and restart. Building on the
+runner instead of here is deliberate — assembling Docker layers needs several
+gigabytes of scratch space that a free-tier disk does not have.
+
+If you ever need to do it by hand:
 ```bash
-cd ~/WriteAI
-git pull
-docker build -t writeai .
+docker pull ghcr.io/animesh-kumar23/writeai:latest
 docker stop writeai && docker rm writeai
-docker run -d --name writeai -p 80:3000 --env-file ~/writeai.env -v writeai_uploads:/app/backend/uploads --restart unless-stopped writeai
+docker run -d --name writeai -p 80:3000 --env-file ~/writeai.env -v writeai_uploads:/app/backend/uploads --restart unless-stopped ghcr.io/animesh-kumar23/writeai:latest
 ```
 
 ### Handy commands
 | Do this | Command |
 |---|---|
+| Check free disk | `df -h /` |
+| What is Docker using? | `docker system df` |
 | See logs | `docker logs -f writeai` |
 | Restart | `docker restart writeai` |
 | Stop | `docker stop writeai` |
@@ -214,5 +222,11 @@ docker run -d --name writeai -p 80:3000 --env-file ~/writeai.env -v writeai_uplo
   need S3 later.
 - **The IP changes** only if you *stop* the instance (not on reboot). If you want a
   permanent IP, allocate a free **Elastic IP** in EC2 and associate it — optional.
+- **The disk is small.** A deploy that fails with `no space left on device` means
+  the box is full. `docker image prune -af` clears images no container is using;
+  `docker container prune -f` clears stopped containers. Never add `--volumes`,
+  that would delete uploaded avatars and cover images. If it keeps filling up,
+  grow the EBS volume in the AWS console, then `sudo growpart /dev/xvda 1 && sudo
+  resize2fs /dev/xvda1`.
 - **No HTTPS.** When you want a real `https://name.com`, buy a cheap domain and put
   **Caddy** in front (it auto-fetches a free certificate), then set `COOKIE_SECURE=true`.
