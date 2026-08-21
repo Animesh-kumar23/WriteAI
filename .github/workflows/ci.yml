@@ -205,9 +205,17 @@ jobs:
             echo "New image did not become healthy."
             docker logs --tail 50 writeai || true
 
-            if [ -n "$PREVIOUS" ]; then
+            # Only roll back if that image is genuinely still on the box. A
+            # container can outlive its image here — `docker system df` has
+            # reported 0 images while one was running — and in that case
+            # `docker rm -f` would destroy the only working copy and the
+            # `docker run` after it would have nothing to start.
+            if [ -n "$PREVIOUS" ] && docker image inspect "$PREVIOUS" >/dev/null 2>&1; then
               echo "Rolling back to $PREVIOUS"
               start_container "$PREVIOUS"
+            else
+              echo "No previous image on the box to roll back to."
+              echo "Leaving the failed container in place rather than removing the only one there is."
             fi
 
             docker logout ghcr.io
