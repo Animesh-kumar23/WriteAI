@@ -134,11 +134,34 @@ jobs:
           script: |
             set -e
 
-            # Reclaim what Docker can spare before pulling. Stopped containers
-            # and images no container is using go; volumes are never touched,
-            # they hold uploaded avatars and cover images.
+            echo "=== disk before ==="
+            df -h /
+            docker system df
+            sudo du -xh -d1 / 2>/dev/null | sort -h | tail -8 || true
+
+            # A full disk is what breaks deploys on a free-tier box, so reclaim
+            # the things that regrow on their own and nothing that does not.
+            #
+            # ~/WriteAI is a leftover checkout from when the server built the
+            # image itself. The pipeline no longer uses it, and the old deploy
+            # script ran `git reset --hard` over it every time, so it never held
+            # anything of its own. The env file lives at ~/writeai.env, outside
+            # that directory, and is not touched.
+            rm -rf ~/WriteAI
+
+            # Container logs are unbounded by default and are the usual reason a
+            # box that was fine last month is full this month.
+            sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log 2>/dev/null || true
+            sudo journalctl --vacuum-size=50M 2>/dev/null || true
+            sudo apt-get clean 2>/dev/null || true
+
+            # Stopped containers, and images no container is using. Volumes are
+            # never pruned: they hold uploaded avatars and cover images.
             docker container prune -f
             docker image prune -af
+
+            echo "=== disk after ==="
+            df -h /
 
             echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
 
